@@ -4,6 +4,21 @@ Open-source **repository intelligence** platform: analyze a codebase into a stru
 
 RepoLens is inspired by the simplicity of tools like GitDiagram, but is **not** an AI-diagram clone. Core analysis is deterministic and works without an LLM.
 
+## What is RepoLens?
+
+RepoLens helps developers understand unfamiliar codebases through static analysis.
+
+It provides interactive views of:
+
+- Repository architecture
+- Package dependencies
+- Symbols and types
+- Relationships between components
+
+## Live Demo
+
+**[Open RepoLens Live Demo →](https://repolens-dsce.onrender.com/)**
+
 ## Pipeline
 
 ```
