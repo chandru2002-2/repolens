@@ -2,7 +2,19 @@
 
 Open-source **repository intelligence** platform: analyze a codebase into a structured `RepositoryModel`, run analyzers, and explore results through **CLI** and an interactive **Web UI**.
 
-RepoLens is inspired by the simplicity of tools like GitDiagram, but is **not** an AI-diagram clone. Core analysis is deterministic and works without an LLM.
+Core analysis is deterministic and works without an LLM.
+
+## What is RepoLens?
+
+RepoLens is a repository intelligence tool that helps developers
+understand unfamiliar codebases through static analysis.
+
+It provides interactive views of repository architecture,
+packages, symbols, and relationships.
+
+## Live Demo
+
+https://repolens-dsce.onrender.com/
 
 ## What is RepoLens?
 
@@ -104,3 +116,13 @@ See [docs/adr/](docs/adr/).
 ## License
 
 Project license TBD (MIT vs Apache-2.0). Dependency/grammar policy: [ADR-009](docs/adr/ADR-009-licensing-grammar-policy.md).
+
+## Author
+
+**Chandru M**
+
+Java Backend Developer · Spring Boot · Repository Intelligence
+
+GitHub: https://github.com/chandru2002-2
+
+© 2026 Chandru M · RepoLens

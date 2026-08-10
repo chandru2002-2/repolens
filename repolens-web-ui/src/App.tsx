@@ -26,11 +26,37 @@ import {
 
 type Phase = "landing" | "running" | "ready" | "error";
 
+const REPO_URL = "https://github.com/chandru2002-2/repolens";
+const AUTHOR_URL = "https://github.com/chandru2002-2";
+
 function Brand() {
   return (
     <span className="brand-mark">
       REPO<span className="slash">//</span>LENS
     </span>
+  );
+}
+
+function SiteFooter() {
+  return (
+    <footer className="site-footer">
+      <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+        RepoLens
+      </a>
+      <span className="site-footer-sep" aria-hidden="true">
+        ·
+      </span>
+      <span>
+        Built by{" "}
+        <a href={AUTHOR_URL} target="_blank" rel="noopener noreferrer">
+          Chandru M
+        </a>
+      </span>
+      <span className="site-footer-sep" aria-hidden="true">
+        ·
+      </span>
+      <span>© 2026</span>
+    </footer>
   );
 }
 
@@ -274,6 +300,24 @@ export default function App() {
             REPO<span className="slash">//</span>LENS
           </h1>
           <p className="hero-sub">Repository intelligence tool</p>
+
+          <div className="hero-intro">
+            <p>
+              RepoLens is a repository intelligence tool that helps developers understand
+              unfamiliar codebases through static analysis.
+            </p>
+            <p>
+              Explore repository architecture, package dependencies, symbols, and
+              relationships through an interactive visual interface.
+            </p>
+          </div>
+
+          <p className="hero-github">
+            <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+              View on GitHub ↗
+            </a>
+          </p>
+
           <hr className="rule" />
 
           <form className="analyze-form" onSubmit={onSubmit}>
@@ -373,7 +417,7 @@ export default function App() {
             />
           </main>
 
-          <footer className="status-bar" aria-label="Analysis status">
+          <div className="status-bar" aria-label="Analysis status">
             <span>
               Status: <strong>{statusLabel}</strong>
             </span>
@@ -404,9 +448,11 @@ export default function App() {
                 {themePreference === "auto" ? `auto/${resolvedTheme}` : resolvedTheme}
               </strong>
             </span>
-          </footer>
+          </div>
         </div>
       )}
+
+      <SiteFooter />
     </div>
   );
 }
