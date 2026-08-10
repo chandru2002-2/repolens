@@ -1,0 +1,40 @@
+# Build
+.gradle/
+build/
+out/
+bin/
+*.class
+*.jar
+*.war
+!gradle/wrapper/gradle-wrapper.jar
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local / runtime
+.repolens/
+*.log
+.env
+.env.*
+
+# Native / Tree-sitter (future)
+*.dylib
+*.so
+*.dll
+
+# Web UI
+repolens-web-ui/node_modules/
+repolens-web-ui/dist/
