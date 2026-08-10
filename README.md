@@ -109,6 +109,14 @@ mkdir -p ../repolens-web/src/main/resources/public
 cp -R dist/. ../repolens-web/src/main/resources/public/
 ```
 
+## Continuous Integration
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main`. It automatically:
+
+- runs backend tests with `./gradlew test` (Java 21)
+- installs and builds the frontend in `repolens-web-ui` (`npm ci` / `npm run build`)
+- validates that the existing `Dockerfile` builds successfully (image is not pushed)
+
 ## Architecture decisions
 
 See [docs/adr/](docs/adr/).
