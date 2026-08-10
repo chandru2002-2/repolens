@@ -152,7 +152,9 @@ public final class RepoLensServer implements AutoCloseable {
             }
         });
 
-        app.start(port);
+        // Bind all interfaces so hosted platforms (e.g. Render) can reach the service.
+        // Localhost / 127.0.0.1 access continues to work.
+        app.start(RepoLensWebMain.BIND_HOST, port);
     }
 
     public int port() {

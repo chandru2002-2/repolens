@@ -1,0 +1,27 @@
+.git
+.gradle
+build
+**/build
+.idea
+.vscode
+.DS_Store
+node_modules
+repolens-web-ui/node_modules
+repolens-web-ui/dist
+repolens-web-ui
+*.log
+.env
+.env.*
+
+# Local IDE / OS noise
+**/.DS_Store
+**/*.iml
+**/out
+
+# Docs / agent artifacts not needed for :repolens-web:installDist
+docs
+AGENTS.md
+ROADMAP.md
+PROJECT_STATUS.md
+*.md
+!README.md
