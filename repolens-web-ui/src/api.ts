@@ -40,6 +40,12 @@ export type AnalysisResponse = {
   };
 };
 
+export function oversizedSkipWarning(result: AnalysisResponse): string | null {
+  const ingest = result.results.find((item) => item.analyzerId === "ingest");
+  const warning = ingest?.findings.find((finding) => finding.severity === "warning");
+  return warning?.message ?? ingest?.summary ?? null;
+}
+
 export type JobStatus = {
   id: string;
   status: "QUEUED" | "RUNNING" | "COMPLETED" | "FAILED";

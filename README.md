@@ -86,6 +86,14 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 - Git (for remote GitHub clone)
 - Node.js 20+ (only to rebuild the UI)
 
+## Ingestion safety limits
+
+Local and remote ingest apply ADR-010 safety limits (defaults in `IngestLimits`):
+
+- **maxFileBytes** — 5 MB per file. Oversized files are **skipped** (not fatal); analysis continues and the result includes an `ingest` warning such as “Skipped 1 file exceeding the 5 MB file-size limit.”
+- **maxTotalBytes** / **maxFileCount** / **maxDepth** — repository-wide caps (still fail the job if exceeded)
+- Common binary/media extensions under the size limit are omitted from the analysis inventory so they do not enter source parsing
+
 ## Quick start
 
 ```bash

@@ -13,6 +13,7 @@ type Props = {
   onSelectNode: (id: string) => void;
   repoName: string;
   repoSource: string;
+  skipWarning?: string | null;
 };
 
 function TreeNode({
@@ -80,6 +81,7 @@ export function ExplorerPanel({
   onSelectNode,
   repoName,
   repoSource,
+  skipWarning = null,
 }: Props) {
   const tree = buildExplorerTree(nodes, edges);
 
@@ -89,6 +91,11 @@ export function ExplorerPanel({
       <div className="panel-body">
         <p className="panel-source">{repoName}</p>
         <p className="panel-source">{repoSource}</p>
+        {skipWarning ? (
+          <p className="panel-warning" role="status">
+            ⚠ {compactSkipWarning(skipWarning)}
+          </p>
+        ) : null}
         <div className="panel-section tree-section" style={{ borderTop: "1px solid var(--line)", marginTop: "0.55rem", paddingTop: "0.45rem" }}>
           <h3>Tree</h3>
           {tree.length === 0 ? (
@@ -110,4 +117,14 @@ export function ExplorerPanel({
       </div>
     </aside>
   );
+}
+
+function compactSkipWarning(message: string): string {
+  const match = message.match(/Skipped (\d+) files? exceeding the ([^.]+)\./i);
+  if (match) {
+    const count = match[1];
+    const limit = match[2].replace(/\s+file-size limit$/i, "").trim();
+    return `${count} file${count === "1" ? "" : "s"} skipped · exceeds ${limit} limit`;
+  }
+  return message;
 }

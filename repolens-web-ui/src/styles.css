@@ -472,6 +472,19 @@ input {
   word-break: break-all;
 }
 
+.panel-warning {
+  margin: 0.45rem 0 0.15rem;
+  padding: 0.4rem 0.45rem;
+  border: 1px solid var(--line-strong);
+  border-left: 2px solid var(--accent);
+  background: var(--select);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+}
+
 .panel-hint {
   margin: 0.5rem 0;
   font-family: var(--font-mono);

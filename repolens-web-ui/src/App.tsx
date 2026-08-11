@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import {
   type AnalysisResponse,
   type JobStatus,
+  oversizedSkipWarning,
   startAnalysis,
   waitForResult,
 } from "./api";
@@ -365,6 +366,7 @@ export default function App() {
               onSelectNode={selectNode}
               repoName={result.repository.name}
               repoSource={result.repository.source}
+              skipWarning={oversizedSkipWarning(result)}
             />
 
             <section className="graph-stage">
