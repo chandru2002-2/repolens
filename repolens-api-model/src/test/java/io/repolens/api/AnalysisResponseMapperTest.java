@@ -32,6 +32,9 @@ class AnalysisResponseMapperTest {
         AnalysisResponseDto dto = AnalysisResponseMapper.from(model, List.of(result), graph);
         assertEquals(AnalysisResponseDto.SCHEMA_VERSION, dto.schemaVersion());
         assertEquals(1, dto.modelStats().fileCount());
+        assertTrue(dto.documentation().isEmpty());
+        assertTrue(dto.symbols().isEmpty());
+        assertEquals(null, dto.metadata());
 
         ObjectMapper mapper = new ObjectMapper();
         String json = mapper.writeValueAsString(dto);
@@ -40,5 +43,8 @@ class AnalysisResponseMapperTest {
         assertEquals(dto.repository().id(), restored.repository().id());
         assertEquals(dto.results().getFirst().analyzerId(), restored.results().getFirst().analyzerId());
         assertTrue(json.contains("\"schemaVersion\":\"v1\""));
+        assertTrue(json.contains("\"documentation\""));
+        assertTrue(json.contains("\"symbols\""));
+        assertTrue(json.contains("\"metadata\""));
     }
 }

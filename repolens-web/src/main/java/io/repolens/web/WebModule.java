@@ -17,7 +17,8 @@ public final class WebModule {
         return new DefaultAnalysisRunner(
                 IngestModule.localIngestor(),
                 ParseModule.sourceAnalyzer(),
-                AnalyzersModule.defaultAnalyzers()
+                AnalyzersModule.defaultAnalyzers(),
+                IngestModule.metadataCollector()
         );
     }
 

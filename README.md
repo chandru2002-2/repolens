@@ -86,6 +86,35 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 - Git (for remote GitHub clone)
 - Node.js 20+ (only to rebuild the UI)
 
+## Diagrams
+
+RepoLens visualizes repository structure through interactive diagrams in the web UI:
+
+- **Architecture** — repository and package/module layout with package dependencies
+- **Package** — package-to-package dependency diagram
+- **Class** — classes/interfaces with inheritance (`extends`) and implementation (`implements`) when present in the model
+- Shared **Explorer** tree and **Inspector** stay linked to the same underlying entity ids across all views
+
+Graph filtering (client-side only — no re-analysis):
+
+- Toggle packages, classes, interfaces, enums, methods, and fields
+- Toggle relationship types (`Depends on`, `Extends`, `Implements`, `Contains`)
+- Name search and internal-only filtering
+
+Documentation-aware inspection:
+
+- Deterministic extraction from `README.md` / README files and `docs/**/*.md`
+- Inspector shows matched excerpts only when a class, package, or similar entity is explicitly referenced (for example `` `UserService` `` or `io.example.auth.JwtFilter`)
+- Documentation is supplemental context, never the source of truth for structure
+
+Repository information (Explorer):
+
+- Optional metadata such as owner, size, branch, and last commit
+- Local repos: size from inventoried analysis files; Git history when available (`First commit` is labeled distinctly from GitHub `Created`)
+- Public GitHub repos: GitHub API metadata when reachable (no auth); analysis continues if metadata fetch fails
+
+Large-file handling: files over the default **5 MB** `maxFileBytes` limit are skipped with a non-blocking warning; analysis continues.
+
 ## Ingestion safety limits
 
 Local and remote ingest apply ADR-010 safety limits (defaults in `IngestLimits`):

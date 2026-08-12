@@ -518,6 +518,50 @@ input {
   color: var(--muted);
 }
 
+.repo-meta {
+  margin: 0;
+}
+
+.repo-meta-row {
+  display: grid;
+  grid-template-columns: 6.2rem 1fr;
+  gap: 0.35rem;
+  align-items: start;
+  margin: 0 0 0.28rem;
+}
+
+.repo-meta-row dt {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.repo-meta-row dd {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink);
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.repo-meta-row dd.emphasis {
+  font-style: italic;
+  color: var(--ink-2);
+}
+
+.commit-message {
+  display: inline;
+}
+
+.meta-section {
+  margin-top: 0.55rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--line);
+}
+
 .tree-root,
 .tree-children,
 .chip-list,
@@ -625,6 +669,92 @@ input {
 .view-tab.active {
   color: var(--accent);
   box-shadow: inset 0 -2px 0 var(--accent);
+}
+
+.graph-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  align-items: center;
+  padding: 0.35rem 0.55rem;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper-2);
+}
+
+.filter-search {
+  min-width: 9rem;
+  flex: 0 1 12rem;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  padding: 0.22rem 0.4rem;
+  border-radius: 2px;
+}
+
+.filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.55rem;
+  align-items: center;
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-toggle input {
+  accent-color: var(--accent);
+}
+
+.inspector-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin: 0.45rem 0 0.2rem;
+}
+
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--ink-2);
+}
+
+.member-list li {
+  padding: 0.12rem 0;
+}
+
+.doc-card {
+  margin: 0 0 0.55rem;
+  padding: 0.4rem 0.45rem;
+  border-left: 2px solid var(--accent);
+  background: var(--select);
+}
+
+.doc-excerpt {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.doc-meta {
+  margin: 0.1rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.64rem;
+  color: var(--muted);
 }
 
 .graph-shell {

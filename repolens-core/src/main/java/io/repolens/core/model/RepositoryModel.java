@@ -25,6 +25,9 @@ public final class RepositoryModel {
     private final Map<String, ExternalDependency> dependenciesById;
     private final Map<String, Relationship> relationshipsById;
     private final List<Metric> metrics;
+    private final Map<String, DocumentationDocument> documentsById;
+    private final Map<String, DocumentationReference> documentationReferencesById;
+    private final RepositoryMetadata metadata;
 
     private RepositoryModel(Builder builder) {
         this.repository = Objects.requireNonNull(builder.repository, "repository");
@@ -35,6 +38,9 @@ public final class RepositoryModel {
         this.dependenciesById = Map.copyOf(builder.dependenciesById);
         this.relationshipsById = Map.copyOf(builder.relationshipsById);
         this.metrics = List.copyOf(builder.metrics);
+        this.documentsById = Map.copyOf(builder.documentsById);
+        this.documentationReferencesById = Map.copyOf(builder.documentationReferencesById);
+        this.metadata = Objects.requireNonNullElse(builder.metadata, RepositoryMetadata.EMPTY);
     }
 
     public Repository repository() {
@@ -81,6 +87,45 @@ public final class RepositoryModel {
         return metrics;
     }
 
+    public Collection<DocumentationDocument> documentation() {
+        return documentsById.values();
+    }
+
+    public Optional<DocumentationDocument> findDocumentation(String id) {
+        return Optional.ofNullable(documentsById.get(id));
+    }
+
+    public Collection<DocumentationReference> documentationReferences() {
+        return documentationReferencesById.values();
+    }
+
+    public List<DocumentationReference> documentationForEntity(String entityId) {
+        Objects.requireNonNull(entityId, "entityId");
+        return documentationReferencesById.values().stream()
+                .filter(ref -> ref.entityId().equals(entityId))
+                .toList();
+    }
+
+    public RepositoryMetadata metadata() {
+        return metadata;
+    }
+
+    /** Returns a copy of this model with replaced metadata (pipeline enrichment). */
+    public RepositoryModel withMetadata(RepositoryMetadata metadata) {
+        Objects.requireNonNull(metadata, "metadata");
+        Builder builder = builder(repository).metadata(metadata);
+        filesByPath.values().forEach(builder::addFile);
+        modulesById.values().forEach(builder::addModule);
+        symbolsById.values().forEach(builder::addSymbol);
+        importsById.values().forEach(builder::addImport);
+        dependenciesById.values().forEach(builder::addExternalDependency);
+        relationshipsById.values().forEach(builder::addRelationship);
+        metrics.forEach(builder::addMetric);
+        documentsById.values().forEach(builder::addDocumentation);
+        documentationReferencesById.values().forEach(builder::addDocumentationReference);
+        return builder.build();
+    }
+
     public int fileCount() {
         return filesByPath.size();
     }
@@ -102,6 +147,9 @@ public final class RepositoryModel {
         private final Map<String, ExternalDependency> dependenciesById = new LinkedHashMap<>();
         private final Map<String, Relationship> relationshipsById = new LinkedHashMap<>();
         private final List<Metric> metrics = new ArrayList<>();
+        private final Map<String, DocumentationDocument> documentsById = new LinkedHashMap<>();
+        private final Map<String, DocumentationReference> documentationReferencesById = new LinkedHashMap<>();
+        private RepositoryMetadata metadata = RepositoryMetadata.EMPTY;
 
         private Builder(Repository repository) {
             this.repository = Objects.requireNonNull(repository, "repository");
@@ -166,6 +214,29 @@ public final class RepositoryModel {
             return this;
         }
 
+        public Builder addDocumentation(DocumentationDocument document) {
+            Objects.requireNonNull(document, "document");
+            if (documentsById.containsKey(document.id())) {
+                throw new IllegalArgumentException("duplicate documentation id: " + document.id());
+            }
+            documentsById.put(document.id(), document);
+            return this;
+        }
+
+        public Builder addDocumentationReference(DocumentationReference reference) {
+            Objects.requireNonNull(reference, "reference");
+            if (documentationReferencesById.containsKey(reference.id())) {
+                throw new IllegalArgumentException("duplicate documentation reference id: " + reference.id());
+            }
+            documentationReferencesById.put(reference.id(), reference);
+            return this;
+        }
+
+        public Builder metadata(RepositoryMetadata metadata) {
+            this.metadata = Objects.requireNonNull(metadata, "metadata");
+            return this;
+        }
+
         public RepositoryModel build() {
             for (Symbol symbol : symbolsById.values()) {
                 symbol.moduleId().ifPresent(moduleId -> {
@@ -191,6 +262,31 @@ public final class RepositoryModel {
                     throw new IllegalStateException(
                             "import " + importDecl.id() + " references unknown file "
                                     + importDecl.sourceFilePath());
+                }
+            }
+            for (DocumentationReference reference : documentationReferencesById.values()) {
+                DocumentationDocument document = documentsById.get(reference.documentId());
+                if (document == null) {
+                    throw new IllegalStateException(
+                            "documentation reference " + reference.id()
+                                    + " references unknown document " + reference.documentId());
+                }
+                boolean sectionFound = document.sections().stream()
+                        .anyMatch(section -> section.id().equals(reference.sectionId()));
+                if (!sectionFound) {
+                    throw new IllegalStateException(
+                            "documentation reference " + reference.id()
+                                    + " references unknown section " + reference.sectionId());
+                }
+                String entityId = reference.entityId();
+                boolean knownEntity = symbolsById.containsKey(entityId)
+                        || modulesById.containsKey(entityId)
+                        || filesByPath.containsKey(entityId)
+                        || repository.id().equals(entityId);
+                if (!knownEntity) {
+                    throw new IllegalStateException(
+                            "documentation reference " + reference.id()
+                                    + " references unknown entity " + entityId);
                 }
             }
             return new RepositoryModel(this);

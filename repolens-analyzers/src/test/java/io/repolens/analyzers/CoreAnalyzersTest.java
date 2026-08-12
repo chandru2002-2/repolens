@@ -47,12 +47,12 @@ class CoreAnalyzersTest {
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("module")));
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("class")));
         assertTrue(graph.edges().stream().anyMatch(e -> e.type().equals("DEPENDS_ON")));
-        assertFalse(graph.nodes().stream().anyMatch(n -> n.kind().equals("method")));
+        assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("method") && n.label().equals("run")));
     }
 
     @Test
     void defaultAnalyzersAreWired() {
-        assertEquals(3, AnalyzersModule.defaultAnalyzers().size());
+        assertEquals(4, AnalyzersModule.defaultAnalyzers().size());
     }
 
     @Test
@@ -146,10 +146,10 @@ class CoreAnalyzersTest {
     }
 
     @Test
-    void graphIncludesTopLevelFunctionsButNotMethods() {
+    void graphIncludesMembersForTypesAndTopLevelFunctions() {
         RepositoryModel model = sampleModel();
         GraphView graph = GraphViewProjector.project(model, List.of());
-        assertFalse(graph.nodes().stream().anyMatch(n -> n.kind().equals("method")));
+        assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("method") && n.label().equals("run")));
 
         RepositoryModel withFunctions = RepositoryModel.builder(Repository.local("r2", "fn", "/tmp/fn"))
                 .addFile(new SourceFile("src/app.js", "javascript", "h1", 10))

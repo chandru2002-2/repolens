@@ -9,6 +9,7 @@ public enum SymbolKind {
     ENUM,
     FUNCTION,
     METHOD,
+    FIELD,
     TYPE,
     OTHER
 }

@@ -5,8 +5,10 @@ import {
   filterGraphForView,
   kindMeta,
   neighborIds,
+  type GraphFilterState,
   type GraphViewMode,
   type Selection,
+  DEFAULT_GRAPH_FILTERS,
 } from "./graphModel";
 import type { ResolvedTheme } from "./theme";
 
@@ -14,6 +16,7 @@ type Props = {
   nodes: GraphNode[];
   edges: GraphEdge[];
   view: GraphViewMode;
+  filters?: GraphFilterState;
   selection: Selection;
   focusId: string | null;
   onSelect: (selection: Selection) => void;
@@ -152,6 +155,28 @@ function graphStyles(palette: GraphPalette): StylesheetStyle[] {
       },
     },
     {
+      selector: 'edge[type = "EXTENDS"]',
+      style: {
+        "line-color": palette.ink,
+        "target-arrow-color": palette.ink,
+        "target-arrow-shape": "triangle",
+        "line-style": "solid",
+        width: 1.6,
+        label: "extends",
+      },
+    },
+    {
+      selector: 'edge[type = "IMPLEMENTS"]',
+      style: {
+        "line-color": palette.accentSoft,
+        "target-arrow-color": palette.accentSoft,
+        "target-arrow-shape": "triangle",
+        "line-style": "dashed",
+        width: 1.4,
+        label: "implements",
+      },
+    },
+    {
       selector: 'edge[type = "CONTAINS"]',
       style: {
         "line-color": palette.line,
@@ -159,6 +184,15 @@ function graphStyles(palette: GraphPalette): StylesheetStyle[] {
         width: 1,
         "line-style": "dashed",
         opacity: 0.65,
+      },
+    },
+    {
+      selector: 'node[kind = "method"], node[kind = "field"]',
+      style: {
+        width: 96,
+        height: 34,
+        "font-size": 8,
+        "border-width": 1,
       },
     },
     {
@@ -236,6 +270,7 @@ export function RepositoryGraph({
   nodes,
   edges,
   view,
+  filters = DEFAULT_GRAPH_FILTERS,
   selection,
   focusId,
   onSelect,
@@ -247,8 +282,8 @@ export function RepositoryGraph({
   onSelectRef.current = onSelect;
 
   const filtered = useMemo(
-    () => filterGraphForView(nodes, edges, view),
-    [nodes, edges, view],
+    () => filterGraphForView(nodes, edges, view, filters),
+    [nodes, edges, view, filters],
   );
 
   useEffect(() => {
@@ -274,7 +309,16 @@ export function RepositoryGraph({
             source: edge.fromNodeId,
             target: edge.toNodeId,
             type: edge.type,
-            label: edge.type === "DEPENDS_ON" ? "USES" : edge.type === "CONTAINS" ? "" : edge.type,
+            label:
+              edge.type === "DEPENDS_ON"
+                ? "USES"
+                : edge.type === "CONTAINS"
+                  ? ""
+                  : edge.type === "EXTENDS"
+                    ? "extends"
+                    : edge.type === "IMPLEMENTS"
+                      ? "implements"
+                      : edge.type,
           },
         })),
       ],
@@ -442,7 +486,7 @@ export function RepositoryGraph({
 }
 
 function layoutOptions(view: GraphViewMode, nodeCount: number) {
-  const repulsion = view === "architecture" ? 16000 : view === "packages" ? 14000 : 12000;
+  const repulsion = view === "architecture" ? 16000 : view === "package" ? 14000 : 12000;
   const ideal = view === "architecture" ? 140 : 110;
   return {
     name: "cose" as const,

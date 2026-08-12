@@ -7,6 +7,7 @@ import io.repolens.core.model.WorkingTreeInventory;
 import io.repolens.core.ports.AnalysisRunner;
 import io.repolens.core.ports.Analyzer;
 import io.repolens.core.ports.RepositoryIngestor;
+import io.repolens.core.ports.RepositoryMetadataCollector;
 import io.repolens.core.ports.SourceAnalyzer;
 
 import java.util.ArrayList;
@@ -25,15 +26,26 @@ public final class DefaultAnalysisRunner implements AnalysisRunner {
     private final RepositoryIngestor ingestor;
     private final SourceAnalyzer sourceAnalyzer;
     private final List<Analyzer> analyzers;
+    private final RepositoryMetadataCollector metadataCollector;
 
     public DefaultAnalysisRunner(
             RepositoryIngestor ingestor,
             SourceAnalyzer sourceAnalyzer,
             List<Analyzer> analyzers
     ) {
+        this(ingestor, sourceAnalyzer, analyzers, RepositoryMetadataCollector.NOOP);
+    }
+
+    public DefaultAnalysisRunner(
+            RepositoryIngestor ingestor,
+            SourceAnalyzer sourceAnalyzer,
+            List<Analyzer> analyzers,
+            RepositoryMetadataCollector metadataCollector
+    ) {
         this.ingestor = Objects.requireNonNull(ingestor, "ingestor");
         this.sourceAnalyzer = Objects.requireNonNull(sourceAnalyzer, "sourceAnalyzer");
         this.analyzers = List.copyOf(Objects.requireNonNull(analyzers, "analyzers"));
+        this.metadataCollector = Objects.requireNonNull(metadataCollector, "metadataCollector");
     }
 
     @Override
@@ -45,8 +57,16 @@ public final class DefaultAnalysisRunner implements AnalysisRunner {
                 ingestion.workingTree(),
                 ingestion.inventory()
         );
-        List<AnalysisResult> results = new ArrayList<>(analyzers.size() + 1);
+
+        RepositoryMetadataCollector.CollectionResult metadata =
+                metadataCollector.collect(ingestion.repository(), ingestion.workingTree(), ingestion.inventory());
+        if (!metadata.metadata().isEmpty()) {
+            model = model.withMetadata(metadata.metadata());
+        }
+
+        List<AnalysisResult> results = new ArrayList<>(analyzers.size() + 2);
         ingestNotes(ingestion.inventory()).ifPresent(results::add);
+        metadata.notes().ifPresent(results::add);
         for (Analyzer analyzer : analyzers) {
             results.add(analyzer.analyze(model));
         }
