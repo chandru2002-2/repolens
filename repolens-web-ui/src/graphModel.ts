@@ -1,11 +1,43 @@
 import type { GraphEdge, GraphNode } from "./api";
 
-export type GraphViewMode = "architecture" | "packages" | "symbols";
+export type GraphViewMode = "architecture" | "package" | "class";
 
 export type Selection =
   | { type: "node"; id: string }
   | { type: "edge"; id: string }
   | null;
+
+export type GraphFilterState = {
+  query: string;
+  showPackages: boolean;
+  showClasses: boolean;
+  showInterfaces: boolean;
+  showEnums: boolean;
+  showMethods: boolean;
+  showFields: boolean;
+  showExternal: boolean;
+  edgeDependsOn: boolean;
+  edgeExtends: boolean;
+  edgeImplements: boolean;
+  edgeContains: boolean;
+  internalOnly: boolean;
+};
+
+export const DEFAULT_GRAPH_FILTERS: GraphFilterState = {
+  query: "",
+  showPackages: false,
+  showClasses: true,
+  showInterfaces: true,
+  showEnums: true,
+  showMethods: false,
+  showFields: false,
+  showExternal: false,
+  edgeDependsOn: true,
+  edgeExtends: true,
+  edgeImplements: true,
+  edgeContains: false,
+  internalOnly: false,
+};
 
 export const SYMBOL_KINDS = new Set([
   "class",
@@ -14,6 +46,8 @@ export const SYMBOL_KINDS = new Set([
   "type",
   "function",
 ]);
+
+export const MEMBER_KINDS = new Set(["method", "field"]);
 
 export const KIND_META: Record<
   string,
@@ -26,6 +60,9 @@ export const KIND_META: Record<
   enum: { title: "Enum", icon: "E", short: "ENUM" },
   type: { title: "Type", icon: "T", short: "TYPE" },
   function: { title: "Function", icon: "f", short: "FN" },
+  method: { title: "Method", icon: "m", short: "METH" },
+  field: { title: "Field", icon: ".", short: "FIELD" },
+  external: { title: "External", icon: "x", short: "EXT" },
 };
 
 export function kindMeta(kind: string) {
@@ -67,42 +104,145 @@ export function neighborIds(edges: GraphEdge[], nodeId: string): Set<string> {
   return ids;
 }
 
-/** Which node kinds appear in each explore view (frontend filter only). */
-export function kindsForView(view: GraphViewMode): Set<string> | null {
+/** Base node kinds for each diagram mode (before user filters). */
+export function kindsForView(view: GraphViewMode): Set<string> {
   switch (view) {
     case "architecture":
       return new Set(["repository", "module"]);
-    case "packages":
+    case "package":
       return new Set(["module"]);
-    case "symbols":
-      return new Set([
-        "module",
-        "class",
-        "interface",
-        "enum",
-        "type",
-        "function",
-      ]);
+    case "class":
+      return new Set(["module", "class", "interface", "enum", "type"]);
     default:
-      return null;
+      return new Set(["repository", "module"]);
   }
+}
+
+export function allowedEdgeTypes(
+  view: GraphViewMode,
+  filters: GraphFilterState,
+): Set<string> {
+  if (view === "architecture") {
+    const types = new Set<string>(["CONTAINS"]);
+    if (filters.edgeDependsOn) {
+      types.add("DEPENDS_ON");
+    }
+    return types;
+  }
+  if (view === "package") {
+    const types = new Set<string>();
+    if (filters.edgeDependsOn) {
+      types.add("DEPENDS_ON");
+    }
+    if (filters.edgeContains) {
+      types.add("CONTAINS");
+    }
+    return types;
+  }
+  const types = new Set<string>();
+  if (filters.edgeDependsOn) {
+    types.add("DEPENDS_ON");
+  }
+  if (filters.edgeExtends) {
+    types.add("EXTENDS");
+  }
+  if (filters.edgeImplements) {
+    types.add("IMPLEMENTS");
+  }
+  if (filters.edgeContains) {
+    types.add("CONTAINS");
+  }
+  return types;
 }
 
 export function filterGraphForView(
   nodes: GraphNode[],
   edges: GraphEdge[],
   view: GraphViewMode,
+  filters: GraphFilterState = DEFAULT_GRAPH_FILTERS,
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
-  const kinds = kindsForView(view);
-  if (!kinds) {
-    return { nodes, edges };
+  const baseKinds = kindsForView(view);
+  const kindAllowed = new Set<string>();
+  for (const kind of baseKinds) {
+    if (kind === "module" && !filters.showPackages && view === "class") {
+      continue;
+    }
+    if (kind === "class" && !filters.showClasses) {
+      continue;
+    }
+    if (kind === "interface" && !filters.showInterfaces) {
+      continue;
+    }
+    if (kind === "enum" && !filters.showEnums) {
+      continue;
+    }
+    kindAllowed.add(kind);
   }
-  const visible = nodes.filter((node) => kinds.has(node.kind));
+  if (view === "architecture") {
+    kindAllowed.add("repository");
+    kindAllowed.add("module");
+  }
+  if (view === "class") {
+    if (filters.showMethods) {
+      kindAllowed.add("method");
+    }
+    if (filters.showFields) {
+      kindAllowed.add("field");
+    }
+    if (filters.showExternal) {
+      kindAllowed.add("external");
+    }
+  }
+
+  let visible = nodes.filter((node) => kindAllowed.has(node.kind));
+  const q = filters.query.trim().toLowerCase();
+  if (q) {
+    const matched = new Set(
+      visible
+        .filter(
+          (node) =>
+            node.label.toLowerCase().includes(q) ||
+            node.kind.toLowerCase().includes(q) ||
+            (node.sourceEntityId ?? "").toLowerCase().includes(q),
+        )
+        .map((node) => node.id),
+    );
+    // Keep neighbors of matches so relationships remain visible.
+    for (const edge of edges) {
+      if (matched.has(edge.fromNodeId) || matched.has(edge.toNodeId)) {
+        matched.add(edge.fromNodeId);
+        matched.add(edge.toNodeId);
+      }
+    }
+    visible = visible.filter((node) => matched.has(node.id));
+  }
+
   const visibleIds = new Set(visible.map((node) => node.id));
-  const visibleEdges = edges.filter(
+  const edgeTypes = allowedEdgeTypes(view, filters);
+  let visibleEdges = edges.filter(
     (edge) =>
-      visibleIds.has(edge.fromNodeId) && visibleIds.has(edge.toNodeId),
+      edgeTypes.has(edge.type) &&
+      visibleIds.has(edge.fromNodeId) &&
+      visibleIds.has(edge.toNodeId),
   );
+
+  if (filters.internalOnly) {
+    visibleEdges = visibleEdges.filter((edge) => {
+      const from = nodeById(nodes, edge.fromNodeId);
+      const to = nodeById(nodes, edge.toNodeId);
+      return from?.kind !== "external" && to?.kind !== "external";
+    });
+  }
+
+  // Drop isolate modules in class view when they have no visible type children / edges.
+  if (view === "class" && !filters.showPackages) {
+    visible = visible.filter((node) => node.kind !== "module");
+    const ids = new Set(visible.map((node) => node.id));
+    visibleEdges = visibleEdges.filter(
+      (edge) => ids.has(edge.fromNodeId) && ids.has(edge.toNodeId),
+    );
+  }
+
   return { nodes: visible, edges: visibleEdges };
 }
 
@@ -166,8 +306,20 @@ export function structuredRole(
   const containedIn = groups.find(
     (g) => g.type === "CONTAINS" && g.direction === "in",
   );
+  const extendsOut = groups.find(
+    (g) => g.type === "EXTENDS" && g.direction === "out",
+  );
+  const implementsOut = groups.find(
+    (g) => g.type === "IMPLEMENTS" && g.direction === "out",
+  );
 
   const parts: string[] = [];
+  if (extendsOut && extendsOut.nodes.length > 0) {
+    parts.push(`extends ${extendsOut.nodes.map((n) => n.label).join(", ")}`);
+  }
+  if (implementsOut && implementsOut.nodes.length > 0) {
+    parts.push(`implements ${implementsOut.nodes.map((n) => n.label).join(", ")}`);
+  }
   if (usedBy && usedBy.nodes.length > 0) {
     parts.push(
       `referenced by ${usedBy.nodes.map((n) => n.label).slice(0, 4).join(", ")}${
@@ -241,11 +393,14 @@ export function buildExplorerTree(
     if (!node) {
       return null;
     }
-    // Keep explorer readable: stop expanding at symbols (no nested method spam).
+    // Keep explorer readable: stop expanding at type symbols (members stay in inspector).
     const childIds =
-      depth >= 2 || SYMBOL_KINDS.has(node.kind)
+      depth >= 2 || SYMBOL_KINDS.has(node.kind) || MEMBER_KINDS.has(node.kind)
         ? []
-        : (childrenOf.get(id) ?? []);
+        : (childrenOf.get(id) ?? []).filter((childId) => {
+            const child = nodeById(nodes, childId);
+            return child && !MEMBER_KINDS.has(child.kind);
+          });
     const children = childIds
       .map((childId) => build(childId, depth + 1))
       .filter((item): item is ExplorerItem => item !== null)
@@ -274,4 +429,20 @@ export function buildExplorerTree(
     .map((module) => build(module.id, 1))
     .filter((item): item is ExplorerItem => item !== null)
     .sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export function parentModuleNode(
+  nodes: GraphNode[],
+  edges: GraphEdge[],
+  nodeId: string,
+): GraphNode | null {
+  for (const edge of edges) {
+    if (edge.type === "CONTAINS" && edge.toNodeId === nodeId) {
+      const parent = nodeById(nodes, edge.fromNodeId);
+      if (parent?.kind === "module") {
+        return parent;
+      }
+    }
+  }
+  return null;
 }

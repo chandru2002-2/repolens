@@ -3,14 +3,19 @@ import type { CSSProperties } from "react";
 import {
   type AnalysisResponse,
   type JobStatus,
+  metadataWarning,
+  oversizedSkipWarning,
   startAnalysis,
   waitForResult,
 } from "./api";
 import { DetailsPanel } from "./DetailsPanel";
 import { ExplorerPanel } from "./ExplorerPanel";
+import { GraphFilters } from "./GraphFilters";
 import {
+  DEFAULT_GRAPH_FILTERS,
   kindMeta,
   searchNodes,
+  type GraphFilterState,
   type GraphViewMode,
   type Selection,
 } from "./graphModel";
@@ -104,6 +109,7 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [view, setView] = useState<GraphViewMode>("architecture");
+  const [filters, setFilters] = useState<GraphFilterState>(DEFAULT_GRAPH_FILTERS);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement | null>(null);
@@ -188,6 +194,7 @@ export default function App() {
     setFocusId(null);
     setQuery("");
     setView("architecture");
+    setFilters(DEFAULT_GRAPH_FILTERS);
     setPhase("running");
     try {
       const job = await startAnalysis(source);
@@ -204,9 +211,9 @@ export default function App() {
   function selectNode(id: string) {
     setSelection({ type: "node", id });
     const node = result?.graph.nodes.find((item) => item.id === id);
-    if (node && ["class", "interface", "enum", "type", "function"].includes(node.kind)) {
-      if (view !== "symbols") {
-        setView("symbols");
+    if (node && ["class", "interface", "enum", "type"].includes(node.kind)) {
+      if (view === "architecture" || view === "package") {
+        setView("class");
       }
     }
   }
@@ -365,15 +372,18 @@ export default function App() {
               onSelectNode={selectNode}
               repoName={result.repository.name}
               repoSource={result.repository.source}
+              skipWarning={oversizedSkipWarning(result)}
+              metadata={result.metadata}
+              metadataWarning={metadataWarning(result)}
             />
 
             <section className="graph-stage">
-              <div className="view-tabs" role="tablist" aria-label="Graph views">
+              <div className="view-tabs" role="tablist" aria-label="Diagram views">
                 {(
                   [
                     ["architecture", "Architecture"],
-                    ["packages", "Packages"],
-                    ["symbols", "Symbols"],
+                    ["package", "Package"],
+                    ["class", "Class"],
                   ] as const
                 ).map(([id, label]) => (
                   <button
@@ -391,10 +401,12 @@ export default function App() {
                   </button>
                 ))}
               </div>
+              <GraphFilters view={view} filters={filters} onChange={setFilters} />
               <RepositoryGraph
                 nodes={result.graph.nodes}
                 edges={result.graph.edges}
                 view={view}
+                filters={filters}
                 selection={selection}
                 focusId={focusId}
                 onSelect={setSelection}
@@ -403,10 +415,12 @@ export default function App() {
             </section>
 
             <DetailsPanel
+              result={result}
               nodes={result.graph.nodes}
               edges={result.graph.edges}
               selection={selection}
               onSelectNode={selectNode}
+              onChangeView={setView}
               focused={focusId !== null && selection?.type === "node" && focusId === selection.id}
               onFocus={() => {
                 if (selection?.type === "node") {

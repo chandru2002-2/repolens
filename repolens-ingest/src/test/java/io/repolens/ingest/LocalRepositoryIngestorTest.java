@@ -55,6 +55,39 @@ class LocalRepositoryIngestorTest {
     }
 
     @Test
+    void skipsOversizedFilesAndContinuesInventory() throws Exception {
+        Files.writeString(tempDir.resolve("ok.java"), "class Ok {}");
+        Files.write(tempDir.resolve("huge.bin"), new byte[2_048]);
+
+        IngestLimits limits = new IngestLimits(50, 1024 * 1024, 1024, 16);
+        LocalRepositoryIngestor ingestor = IngestModule.localIngestor(limits);
+
+        RepositoryIngestor.IngestionResult result =
+                ingestor.ingest(RepositoryIngestor.IngestionRequest.local(tempDir.toString()));
+
+        assertTrue(result.inventory().files().stream().anyMatch(f -> f.relativePath().equals("ok.java")));
+        assertTrue(result.inventory().files().stream().noneMatch(f -> f.relativePath().equals("huge.bin")));
+        assertEquals(1, result.inventory().skippedOversizedFiles().size());
+        assertEquals("huge.bin", result.inventory().skippedOversizedFiles().getFirst().relativePath());
+        assertEquals("maxFileBytes", result.inventory().skippedOversizedFiles().getFirst().reason());
+        assertEquals(1024, result.inventory().skippedOversizedFiles().getFirst().limitBytes());
+    }
+
+    @Test
+    void skipsSmallBinaryAssetsWithoutFailing() throws Exception {
+        Files.writeString(tempDir.resolve("App.java"), "class App {}");
+        Files.write(tempDir.resolve("logo.png"), new byte[] {1, 2, 3, 4});
+
+        RepositoryIngestor.IngestionResult result =
+                IngestModule.localIngestor().ingest(RepositoryIngestor.IngestionRequest.local(tempDir.toString()));
+
+        assertTrue(result.inventory().files().stream().anyMatch(f -> f.relativePath().equals("App.java")));
+        assertTrue(result.inventory().files().stream().noneMatch(f -> f.relativePath().equals("logo.png")));
+        assertTrue(result.inventory().skippedOversizedFiles().isEmpty());
+        assertTrue(result.inventory().skippedFileCount() >= 1);
+    }
+
+    @Test
     void enforcesMaxFileCount() throws Exception {
         Files.writeString(tempDir.resolve("a.txt"), "a");
         Files.writeString(tempDir.resolve("b.txt"), "b");

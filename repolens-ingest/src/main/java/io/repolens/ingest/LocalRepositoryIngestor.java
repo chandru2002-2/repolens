@@ -110,6 +110,7 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
 
     private WorkingTreeInventory scan(Path workingTree, IgnoreRules ignoreRules) throws IOException {
         List<WorkingTreeInventory.InventoriedFile> files = new ArrayList<>();
+        List<WorkingTreeInventory.SkippedFile> skippedFiles = new ArrayList<>();
         AtomicLong totalBytes = new AtomicLong();
         AtomicInteger skipped = new AtomicInteger();
 
@@ -148,15 +149,21 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
                     return FileVisitResult.CONTINUE;
                 }
 
+                String posixPath = toPosix(relative);
                 long size = attrs.size();
                 if (size > limits.maxFileBytes()) {
-                    throw new IngestionException(String.format(
-                            Locale.ROOT,
-                            "File exceeds maxFileBytes (%d): %s (%d bytes)",
-                            limits.maxFileBytes(),
-                            relative,
-                            size
+                    skippedFiles.add(new WorkingTreeInventory.SkippedFile(
+                            posixPath,
+                            "maxFileBytes",
+                            size,
+                            limits.maxFileBytes()
                     ));
+                    skipped.incrementAndGet();
+                    return FileVisitResult.CONTINUE;
+                }
+                if (BinaryExtensions.isBinaryPath(posixPath)) {
+                    skipped.incrementAndGet();
+                    return FileVisitResult.CONTINUE;
                 }
 
                 long nextTotal = totalBytes.addAndGet(size);
@@ -169,7 +176,7 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
                     ));
                 }
 
-                files.add(new WorkingTreeInventory.InventoriedFile(toPosix(relative), size));
+                files.add(new WorkingTreeInventory.InventoriedFile(posixPath, size));
                 if (files.size() > limits.maxFileCount()) {
                     throw new IngestionException(String.format(
                             Locale.ROOT,
@@ -193,7 +200,8 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
         });
 
         files.sort((a, b) -> a.relativePath().compareTo(b.relativePath()));
-        return new WorkingTreeInventory(files, totalBytes.get(), skipped.get());
+        skippedFiles.sort((a, b) -> a.relativePath().compareTo(b.relativePath()));
+        return new WorkingTreeInventory(files, totalBytes.get(), skipped.get(), skippedFiles);
     }
 
     private static int depth(Path relative) {

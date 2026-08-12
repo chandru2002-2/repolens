@@ -24,10 +24,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -73,6 +76,10 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
 
         RepositoryModel.Builder builder = RepositoryModel.builder(repository);
         Set<String> moduleIds = new HashSet<>();
+        List<Symbol> symbols = new ArrayList<>();
+        List<Module> modules = new ArrayList<>();
+        Map<String, String> typeIdsBySimpleName = new HashMap<>();
+        List<PendingTypeEdge> pendingEdges = new ArrayList<>();
         int symbolSeq = 0;
         int importSeq = 0;
         int relationshipSeq = 0;
@@ -95,7 +102,9 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
             if (moduleName.isPresent()) {
                 String id = "module:" + moduleName.get();
                 if (moduleIds.add(id)) {
-                    builder.addModule(Module.of(id, moduleName.get(), profile.id()));
+                    Module module = Module.of(id, moduleName.get(), profile.id());
+                    builder.addModule(module);
+                    modules.add(module);
                 }
                 moduleId = Optional.of(id);
             }
@@ -124,11 +133,13 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
                             ));
                         }
                     }
-                    case "class", "interface", "enum", "type", "function", "method" -> {
+                    case "class", "interface", "enum", "type", "function", "method", "field" -> {
                         SymbolKind kind = toKind(capture.name());
                         String symbolId = "sym:" + (++symbolSeq);
-                        Optional<String> parent = kind == SymbolKind.METHOD ? enclosingTypeId : Optional.empty();
-                        builder.addSymbol(new Symbol(
+                        Optional<String> parent = kind == SymbolKind.METHOD || kind == SymbolKind.FIELD
+                                ? enclosingTypeId
+                                : Optional.empty();
+                        Symbol symbol = new Symbol(
                                 symbolId,
                                 capture.text().trim(),
                                 kind,
@@ -136,17 +147,48 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
                                 moduleId,
                                 location(file.relativePath(), capture),
                                 Optional.empty()
-                        ));
+                        );
+                        builder.addSymbol(symbol);
+                        symbols.add(symbol);
                         if (kind == SymbolKind.CLASS || kind == SymbolKind.INTERFACE
                                 || kind == SymbolKind.ENUM || kind == SymbolKind.TYPE) {
                             enclosingTypeId = Optional.of(symbolId);
+                            typeIdsBySimpleName.putIfAbsent(symbol.name(), symbolId);
                         }
-                        if (moduleId.isPresent()) {
+                        if (moduleId.isPresent() && (kind == SymbolKind.CLASS || kind == SymbolKind.INTERFACE
+                                || kind == SymbolKind.ENUM || kind == SymbolKind.TYPE
+                                || kind == SymbolKind.FUNCTION)) {
                             builder.addRelationship(Relationship.of(
                                     "rel:" + (++relationshipSeq),
                                     RelationshipType.CONTAINS,
                                     moduleId.get(),
                                     symbolId
+                            ));
+                        }
+                        if (parent.isPresent() && (kind == SymbolKind.METHOD || kind == SymbolKind.FIELD)) {
+                            builder.addRelationship(Relationship.of(
+                                    "rel:" + (++relationshipSeq),
+                                    RelationshipType.CONTAINS,
+                                    parent.get(),
+                                    symbolId
+                            ));
+                        }
+                    }
+                    case "extends" -> {
+                        if (enclosingTypeId.isPresent()) {
+                            pendingEdges.add(new PendingTypeEdge(
+                                    enclosingTypeId.get(),
+                                    RelationshipType.EXTENDS,
+                                    simpleName(capture.text())
+                            ));
+                        }
+                    }
+                    case "implements" -> {
+                        if (enclosingTypeId.isPresent()) {
+                            pendingEdges.add(new PendingTypeEdge(
+                                    enclosingTypeId.get(),
+                                    RelationshipType.IMPLEMENTS,
+                                    simpleName(capture.text())
                             ));
                         }
                     }
@@ -156,6 +198,20 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
             }
         }
 
+        for (PendingTypeEdge edge : pendingEdges) {
+            String targetId = typeIdsBySimpleName.get(edge.targetSimpleName());
+            if (targetId == null || targetId.equals(edge.fromSymbolId())) {
+                continue;
+            }
+            builder.addRelationship(Relationship.of(
+                    "rel:" + (++relationshipSeq),
+                    edge.type(),
+                    edge.fromSymbolId(),
+                    targetId
+            ));
+        }
+
+        DocumentationIndexer.index(builder, workingTree, inventory, symbols, modules);
         return builder.build();
     }
 
@@ -189,8 +245,15 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
             case "type" -> SymbolKind.TYPE;
             case "function" -> SymbolKind.FUNCTION;
             case "method" -> SymbolKind.METHOD;
+            case "field" -> SymbolKind.FIELD;
             default -> SymbolKind.OTHER;
         };
+    }
+
+    private static String simpleName(String typeName) {
+        String value = typeName == null ? "" : typeName.trim();
+        int dot = value.lastIndexOf('.');
+        return dot >= 0 ? value.substring(dot + 1) : value;
     }
 
     private static SourceLocation location(String path, SyntaxCapture capture) {
@@ -228,5 +291,8 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
             return "unknown";
         }
         return lower.substring(dot + 1);
+    }
+
+    private record PendingTypeEdge(String fromSymbolId, RelationshipType type, String targetSimpleName) {
     }
 }

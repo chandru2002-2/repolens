@@ -24,13 +24,14 @@ import java.util.Set;
  * <ul>
  *   <li>repository + all modules</li>
  *   <li>all CLASS / INTERFACE / ENUM / TYPE</li>
+ *   <li>METHOD / FIELD members capped per parent type</li>
  *   <li>top-level FUNCTION only (no parent), capped at {@link #MAX_TOP_LEVEL_FUNCTIONS}</li>
- *   <li>METHOD excluded by default to keep large graphs readable</li>
  * </ul>
  */
 public final class GraphViewProjector {
 
     static final int MAX_TOP_LEVEL_FUNCTIONS = 40;
+    static final int MAX_MEMBERS_PER_TYPE = 24;
 
     private GraphViewProjector() {
     }
@@ -64,17 +65,32 @@ public final class GraphViewProjector {
                     symbol.kind().name().toLowerCase(Locale.ROOT),
                     symbol.id()
             );
-            symbol.moduleId().ifPresent(moduleId -> edges.add(new GraphView.Edge(
-                    "edge:contains:" + symbol.id(),
-                    "node:" + moduleId,
-                    symbolNodeId,
-                    "CONTAINS"
-            )));
+            if (symbol.parentSymbolId().isPresent()) {
+                String parentNode = "node:" + symbol.parentSymbolId().get();
+                if (nodeIds.contains(parentNode)) {
+                    edges.add(new GraphView.Edge(
+                            "edge:contains:" + symbol.id(),
+                            parentNode,
+                            symbolNodeId,
+                            "CONTAINS"
+                    ));
+                }
+            } else {
+                symbol.moduleId().ifPresent(moduleId -> edges.add(new GraphView.Edge(
+                        "edge:contains:" + symbol.id(),
+                        "node:" + moduleId,
+                        symbolNodeId,
+                        "CONTAINS"
+                )));
+            }
         }
 
         int edgeSeq = 0;
         for (Relationship relationship : model.relationships()) {
             if (relationship.type().name().equals("CONTAINS")) {
+                continue;
+            }
+            if (relationship.type().name().equals("IMPORTS")) {
                 continue;
             }
             edgeSeq = maybeAddEdge(edges, nodeIds, relationship, "edge:model-", edgeSeq);
@@ -95,6 +111,19 @@ public final class GraphViewProjector {
             if (isTypeSymbol(symbol.kind())) {
                 selected.add(symbol);
             }
+        }
+
+        for (Symbol type : List.copyOf(selected)) {
+            List<Symbol> members = model.symbols().stream()
+                    .filter(symbol -> symbol.parentSymbolId().orElse("").equals(type.id()))
+                    .filter(symbol -> symbol.kind() == SymbolKind.METHOD || symbol.kind() == SymbolKind.FIELD)
+                    .sorted(Comparator
+                            .comparing((Symbol s) -> s.kind() == SymbolKind.FIELD ? 0 : 1)
+                            .thenComparing(Symbol::name)
+                            .thenComparing(s -> s.location().filePath()))
+                    .limit(MAX_MEMBERS_PER_TYPE)
+                    .toList();
+            selected.addAll(members);
         }
 
         List<Symbol> topLevelFunctions = model.symbols().stream()

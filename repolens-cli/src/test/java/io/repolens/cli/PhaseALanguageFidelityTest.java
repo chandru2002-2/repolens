@@ -15,7 +15,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -57,7 +56,6 @@ class PhaseALanguageFidelityTest {
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("class")));
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("function")));
         assertTrue(graph.edges().stream().anyMatch(e -> e.type().equals("DEPENDS_ON")));
-        assertFalse(graph.nodes().stream().anyMatch(n -> n.kind().equals("method")));
     }
 
     @Test
@@ -117,7 +115,6 @@ class PhaseALanguageFidelityTest {
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("class")));
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("interface")));
         assertTrue(graph.edges().stream().anyMatch(e -> e.type().equals("DEPENDS_ON")));
-        assertFalse(graph.nodes().stream().anyMatch(n -> n.kind().equals("method")));
     }
 
     @Test
@@ -148,7 +145,6 @@ class PhaseALanguageFidelityTest {
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("class")));
         assertTrue(graph.nodes().stream().anyMatch(n -> n.kind().equals("function")));
         assertTrue(graph.edges().stream().anyMatch(e -> e.type().equals("DEPENDS_ON")));
-        assertFalse(graph.nodes().stream().anyMatch(n -> n.kind().equals("method")));
     }
 
     @Test

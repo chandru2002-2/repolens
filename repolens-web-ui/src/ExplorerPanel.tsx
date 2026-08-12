@@ -1,5 +1,6 @@
 import { useState } from "react";
-import type { GraphEdge, GraphNode } from "./api";
+import type { GraphEdge, GraphNode, RepositoryMetadata } from "./api";
+import { buildMetadataRows } from "./format";
 import {
   buildExplorerTree,
   kindMeta,
@@ -13,6 +14,9 @@ type Props = {
   onSelectNode: (id: string) => void;
   repoName: string;
   repoSource: string;
+  skipWarning?: string | null;
+  metadata?: RepositoryMetadata | null;
+  metadataWarning?: string | null;
 };
 
 function TreeNode({
@@ -80,8 +84,12 @@ export function ExplorerPanel({
   onSelectNode,
   repoName,
   repoSource,
+  skipWarning = null,
+  metadata = null,
+  metadataWarning = null,
 }: Props) {
   const tree = buildExplorerTree(nodes, edges);
+  const rows = buildMetadataRows(metadata, repoName);
 
   return (
     <aside className="panel explorer-panel">
@@ -89,7 +97,46 @@ export function ExplorerPanel({
       <div className="panel-body">
         <p className="panel-source">{repoName}</p>
         <p className="panel-source">{repoSource}</p>
-        <div className="panel-section tree-section" style={{ borderTop: "1px solid var(--line)", marginTop: "0.55rem", paddingTop: "0.45rem" }}>
+        {skipWarning ? (
+          <p className="panel-warning" role="status">
+            ⚠ {compactSkipWarning(skipWarning)}
+          </p>
+        ) : null}
+        {metadataWarning ? (
+          <p className="panel-warning" role="status">
+            ⚠ {metadataWarning}
+          </p>
+        ) : null}
+
+        {rows.length > 0 ? (
+          <div className="panel-section meta-section">
+            <h3>Repository information</h3>
+            <dl className="repo-meta">
+              {rows.map((row) => (
+                <div key={row.label} className="repo-meta-row">
+                  <dt>{row.label}</dt>
+                  <dd
+                    className={row.emphasis ? "emphasis" : undefined}
+                    title={row.title}
+                  >
+                    {row.label === "Commit message" ? (
+                      <span className="commit-message">“{row.value}”</span>
+                    ) : row.label === "Commit author" ? (
+                      <span>By {row.value}</span>
+                    ) : (
+                      row.value
+                    )}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ) : null}
+
+        <div
+          className="panel-section tree-section"
+          style={{ borderTop: "1px solid var(--line)", marginTop: "0.55rem", paddingTop: "0.45rem" }}
+        >
           <h3>Tree</h3>
           {tree.length === 0 ? (
             <p className="panel-hint">No hierarchical CONTAINS edges in graph.</p>
@@ -110,4 +157,14 @@ export function ExplorerPanel({
       </div>
     </aside>
   );
+}
+
+function compactSkipWarning(message: string): string {
+  const match = message.match(/Skipped (\d+) files? exceeding the ([^.]+)\./i);
+  if (match) {
+    const count = match[1];
+    const limit = match[2].replace(/\s+file-size limit$/i, "").trim();
+    return `${count} file${count === "1" ? "" : "s"} skipped · exceeds ${limit} limit`;
+  }
+  return message;
 }

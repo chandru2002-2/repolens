@@ -142,7 +142,8 @@ public final class RepoLensCli {
         DefaultAnalysisRunner runner = new DefaultAnalysisRunner(
                 ingestor,
                 sourceAnalyzer,
-                AnalyzersModule.defaultAnalyzers()
+                AnalyzersModule.defaultAnalyzers(),
+                IngestModule.metadataCollector()
         );
         try {
             AnalysisRunner.AnalysisRunResult result =
@@ -160,6 +161,18 @@ public final class RepoLensCli {
             StringBuilder report = new StringBuilder();
             report.append("== RepoLens Analyze ==\n");
             report.append("Repository : ").append(model.repository().name()).append('\n');
+            model.metadata().owner().ifPresent(owner ->
+                    report.append("Owner      : ").append(owner).append('\n'));
+            model.metadata().defaultBranch().ifPresent(branch ->
+                    report.append("Branch     : ").append(branch).append('\n'));
+            model.metadata().sizeBytes().ifPresent(size ->
+                    report.append("Size       : ").append(size).append(" bytes\n"));
+            model.metadata().lastCommit().ifPresent(commit -> {
+                commit.message().ifPresent(message ->
+                        report.append("Last commit: ").append(message.split("\\R", 2)[0]).append('\n'));
+                commit.author().ifPresent(author ->
+                        report.append("Commit by  : ").append(author).append('\n'));
+            });
             report.append("Parse engine: ").append(sourceAnalyzer.engineId()).append('\n');
             report.append("Files      : ").append(model.fileCount()).append('\n');
             report.append("Modules    : ").append(model.modules().size()).append('\n');

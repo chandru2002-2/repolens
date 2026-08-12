@@ -15,6 +15,7 @@ public final class AnalyzersModule {
         return List.of(
                 new StructureAnalyzer(),
                 new DependencyAnalyzer(),
+                new TypeDependencyAnalyzer(),
                 new MetricsAnalyzer()
         );
     }

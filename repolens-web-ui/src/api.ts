@@ -12,6 +12,57 @@ export type GraphEdge = {
   type: string;
 };
 
+export type DocumentationSection = {
+  id: string;
+  heading: string;
+  text: string;
+  startLine: number;
+};
+
+export type DocumentationRef = {
+  id: string;
+  sectionId: string;
+  entityId: string;
+  matchedText: string;
+};
+
+export type DocumentationEntry = {
+  id: string;
+  path: string;
+  title: string;
+  sections: DocumentationSection[];
+  references: DocumentationRef[];
+};
+
+export type SymbolDetail = {
+  id: string;
+  name: string;
+  kind: string;
+  moduleId: string | null;
+  moduleName: string | null;
+  filePath: string | null;
+  parentSymbolId: string | null;
+  fieldNames: string[];
+  methodNames: string[];
+};
+
+export type RepositoryMetadata = {
+  name?: string | null;
+  owner?: string | null;
+  sizeBytes?: number | null;
+  createdAt?: string | null;
+  firstCommitAt?: string | null;
+  defaultBranch?: string | null;
+  lastCommit?: {
+    sha?: string | null;
+    message?: string | null;
+    author?: string | null;
+    authoredAt?: string | null;
+    committedAt?: string | null;
+  } | null;
+  commitCount?: number | null;
+};
+
 export type AnalysisResponse = {
   schemaVersion: string;
   repository: {
@@ -38,7 +89,65 @@ export type AnalysisResponse = {
     nodes: GraphNode[];
     edges: GraphEdge[];
   };
+  documentation?: DocumentationEntry[];
+  symbols?: SymbolDetail[];
+  metadata?: RepositoryMetadata | null;
 };
+
+export function oversizedSkipWarning(result: AnalysisResponse): string | null {
+  const ingest = result.results.find((item) => item.analyzerId === "ingest");
+  const warning = ingest?.findings.find((finding) => finding.severity === "warning");
+  return warning?.message ?? ingest?.summary ?? null;
+}
+
+export function metadataWarning(result: AnalysisResponse): string | null {
+  const meta = result.results.find((item) => item.analyzerId === "metadata");
+  const warning = meta?.findings.find((finding) => finding.severity === "warning");
+  return warning?.message ?? null;
+}
+
+export function docsForEntity(
+  result: AnalysisResponse,
+  entityId: string | null | undefined,
+): Array<{
+  path: string;
+  heading: string;
+  text: string;
+  matchedText: string;
+}> {
+  if (!entityId || !result.documentation) {
+    return [];
+  }
+  const hits: Array<{ path: string; heading: string; text: string; matchedText: string }> = [];
+  for (const doc of result.documentation) {
+    for (const ref of doc.references) {
+      if (ref.entityId !== entityId) {
+        continue;
+      }
+      const section = doc.sections.find((item) => item.id === ref.sectionId);
+      if (!section) {
+        continue;
+      }
+      hits.push({
+        path: doc.path,
+        heading: section.heading,
+        text: section.text,
+        matchedText: ref.matchedText,
+      });
+    }
+  }
+  return hits;
+}
+
+export function symbolDetailForNode(
+  result: AnalysisResponse,
+  node: GraphNode | null,
+): SymbolDetail | null {
+  if (!node?.sourceEntityId || !result.symbols) {
+    return null;
+  }
+  return result.symbols.find((symbol) => symbol.id === node.sourceEntityId) ?? null;
+}
 
 export type JobStatus = {
   id: string;
@@ -79,7 +188,7 @@ export async function getResult(id: string): Promise<AnalysisResponse> {
   const response = await fetch(`/v1/jobs/${id}/result`);
   const body = await response.json();
   if (!response.ok) {
-    throw new Error(body.error ?? body.message ?? "Result not ready");
+    throw new Error(body.error ?? "Failed to load result");
   }
   return body as AnalysisResponse;
 }
@@ -89,13 +198,13 @@ export async function waitForResult(
   onStatus?: (status: JobStatus) => void,
 ): Promise<AnalysisResponse> {
   for (;;) {
-    const status = await getJob(id);
-    onStatus?.(status);
-    if (status.status === "COMPLETED") {
+    const job = await getJob(id);
+    onStatus?.(job);
+    if (job.status === "COMPLETED") {
       return getResult(id);
     }
-    if (status.status === "FAILED") {
-      throw new Error(status.error ?? "Analysis failed");
+    if (job.status === "FAILED") {
+      throw new Error(job.error ?? "Analysis failed");
     }
     await new Promise((resolve) => setTimeout(resolve, 400));
   }

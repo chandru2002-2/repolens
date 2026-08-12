@@ -1,17 +1,22 @@
-import type { GraphEdge, GraphNode } from "./api";
+import type { AnalysisResponse, GraphEdge, GraphNode } from "./api";
+import { docsForEntity, symbolDetailForNode } from "./api";
 import {
   kindMeta,
   nodeById,
+  parentModuleNode,
   relationGroups,
   structuredRole,
+  type GraphViewMode,
   type Selection,
 } from "./graphModel";
 
 type Props = {
+  result: AnalysisResponse;
   nodes: GraphNode[];
   edges: GraphEdge[];
   selection: Selection;
   onSelectNode: (id: string) => void;
+  onChangeView: (view: GraphViewMode) => void;
   focused: boolean;
   onFocus: () => void;
   onResetFocus: () => void;
@@ -23,6 +28,18 @@ function relationHeading(type: string, direction: "in" | "out"): string {
   }
   if (type === "DEPENDS_ON" && direction === "in") {
     return "Used By";
+  }
+  if (type === "EXTENDS" && direction === "out") {
+    return "Extends";
+  }
+  if (type === "EXTENDS" && direction === "in") {
+    return "Extended By";
+  }
+  if (type === "IMPLEMENTS" && direction === "out") {
+    return "Implements";
+  }
+  if (type === "IMPLEMENTS" && direction === "in") {
+    return "Implemented By";
   }
   if (type === "CONTAINS" && direction === "out") {
     return "Contains";
@@ -37,10 +54,12 @@ function relationHeading(type: string, direction: "in" | "out"): string {
 }
 
 export function DetailsPanel({
+  result,
   nodes,
   edges,
   selection,
   onSelectNode,
+  onChangeView,
   focused,
   onFocus,
   onResetFocus,
@@ -126,12 +145,13 @@ export function DetailsPanel({
   const meta = kindMeta(node.kind);
   const groups = relationGroups(nodes, edges, node.id);
   const role = structuredRole(node, nodes, edges);
+  const detail = symbolDetailForNode(result, node);
+  const docs = docsForEntity(result, node.sourceEntityId);
+  const moduleNode = parentModuleNode(nodes, edges, node.id);
   const parentModules = groups
     .filter((g) => g.type === "CONTAINS" && g.direction === "in")
-    .flatMap((g) => g.nodes);
-  const contained = groups
-    .filter((g) => g.type === "CONTAINS" && g.direction === "out")
-    .flatMap((g) => g.nodes);
+    .flatMap((g) => g.nodes)
+    .filter((item) => item.kind === "module");
 
   return (
     <aside className="panel details-panel">
@@ -156,6 +176,29 @@ export function DetailsPanel({
           </button>
         </div>
 
+        <div className="inspector-nav">
+          <button type="button" className="tool-button" onClick={() => onChangeView("architecture")}>
+            Architecture
+          </button>
+          {(moduleNode || parentModules[0]) && (
+            <button
+              type="button"
+              className="tool-button"
+              onClick={() => {
+                onChangeView("package");
+                onSelectNode((moduleNode ?? parentModules[0]).id);
+              }}
+            >
+              View package
+            </button>
+          )}
+          {["class", "interface", "enum", "type"].includes(node.kind) ? (
+            <button type="button" className="tool-button" onClick={() => onChangeView("class")}>
+              Class diagram
+            </button>
+          ) : null}
+        </div>
+
         {role ? (
           <section className="panel-section">
             <h3>From graph</h3>
@@ -168,21 +211,31 @@ export function DetailsPanel({
             <dt>Type</dt>
             <dd>{meta.title}</dd>
           </div>
-          {parentModules.length > 0 ? (
+          {detail?.moduleName || parentModules.length > 0 ? (
             <div>
-              <dt>Package / Module</dt>
+              <dt>Package</dt>
               <dd>
-                {parentModules.map((parent) => (
-                  <button
-                    key={parent.id}
-                    type="button"
-                    className="linkish"
-                    onClick={() => onSelectNode(parent.id)}
-                  >
-                    {parent.label}
-                  </button>
-                ))}
+                {detail?.moduleName ? (
+                  <span>{detail.moduleName}</span>
+                ) : (
+                  parentModules.map((parent) => (
+                    <button
+                      key={parent.id}
+                      type="button"
+                      className="linkish"
+                      onClick={() => onSelectNode(parent.id)}
+                    >
+                      {parent.label}
+                    </button>
+                  ))
+                )}
               </dd>
+            </div>
+          ) : null}
+          {detail?.filePath ? (
+            <div>
+              <dt>Path</dt>
+              <dd className="mono">{detail.filePath}</dd>
             </div>
           ) : null}
           {node.sourceEntityId ? (
@@ -193,51 +246,88 @@ export function DetailsPanel({
           ) : null}
         </dl>
 
-        {contained.length > 0 ? (
+        {detail && detail.fieldNames.length > 0 ? (
           <section className="panel-section">
-            <h3>Contained symbols</h3>
-            <ul className="chip-list">
-              {contained.map((child) => (
-                <li key={child.id}>
-                  <button type="button" className="chip" onClick={() => onSelectNode(child.id)}>
-                    <span className="chip-kind">{kindMeta(child.kind).short}</span>
-                    {child.label}
-                  </button>
-                </li>
+            <h3>Fields</h3>
+            <ul className="member-list">
+              {detail.fieldNames.map((name) => (
+                <li key={name}>{name}</li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        {detail && detail.methodNames.length > 0 ? (
+          <section className="panel-section">
+            <h3>Methods</h3>
+            <ul className="member-list">
+              {detail.methodNames.map((name) => (
+                <li key={name}>{name}()</li>
               ))}
             </ul>
           </section>
         ) : null}
 
         {groups
-          .filter((g) => g.type !== "CONTAINS")
+          .filter((g) => g.type !== "CONTAINS" || node.kind === "module")
           .map((group) => (
             <section className="panel-section" key={`${group.type}-${group.direction}`}>
               <h3>{relationHeading(group.type, group.direction)}</h3>
               <ul className="rel-list">
-                {group.nodes.map((related) => (
-                  <li key={related.id}>
-                    <span className="rel-arrow" aria-hidden="true">
-                      {group.direction === "out" ? "->" : "<-"}
-                    </span>
-                    <button type="button" className="linkish" onClick={() => onSelectNode(related.id)}>
-                      {related.label}
-                    </button>
-                    <span className="rel-kind">{kindMeta(related.kind).short}</span>
-                  </li>
-                ))}
+                {group.nodes
+                  .filter((related) => related.kind !== "method" && related.kind !== "field")
+                  .map((related) => (
+                    <li key={related.id}>
+                      <span className="rel-arrow" aria-hidden="true">
+                        {group.direction === "out" ? "->" : "<-"}
+                      </span>
+                      <button type="button" className="linkish" onClick={() => onSelectNode(related.id)}>
+                        {related.label}
+                      </button>
+                      <span className="rel-kind">{kindMeta(related.kind).short}</span>
+                    </li>
+                  ))}
               </ul>
             </section>
           ))}
 
-        {groups.length === 0 ? (
+        {docs.length > 0 ? (
+          <section className="panel-section">
+            <h3>Documentation</h3>
+            {docs.slice(0, 4).map((doc, index) => (
+              <div className="doc-card" key={`${doc.path}-${doc.heading}-${index}`}>
+                <p className="doc-excerpt">{excerpt(doc.text)}</p>
+                <p className="doc-meta">
+                  Source: <span className="mono">{doc.path}</span>
+                </p>
+                <p className="doc-meta">Relevant section: {doc.heading}</p>
+              </div>
+            ))}
+            {docs.length > 1 ? (
+              <p className="panel-hint">
+                Related docs:{" "}
+                {[...new Set(docs.map((item) => item.path))].join(", ")}
+              </p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {groups.length === 0 && docs.length === 0 ? (
           <p className="panel-hint">No graph relationships for this node.</p>
         ) : null}
 
         <p className="panel-footnote">
-          File paths and methods appear only when present in API graph data.
+          Documentation is supplemental context matched deterministically from README/docs.
         </p>
       </div>
     </aside>
   );
+}
+
+function excerpt(text: string): string {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 220) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, 220).trim()}…`;
 }
