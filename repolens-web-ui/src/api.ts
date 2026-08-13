@@ -63,6 +63,19 @@ export type RepositoryMetadata = {
   commitCount?: number | null;
 };
 
+export type DiagramView = {
+  type: string;
+  title: string;
+  graph: {
+    id: string;
+    nodes: GraphNode[];
+    edges: GraphEdge[];
+  };
+  emptyMessage?: string | null;
+  totalNodeCount?: number;
+  truncated?: boolean;
+};
+
 export type AnalysisResponse = {
   schemaVersion: string;
   repository: {
@@ -92,6 +105,7 @@ export type AnalysisResponse = {
   documentation?: DocumentationEntry[];
   symbols?: SymbolDetail[];
   metadata?: RepositoryMetadata | null;
+  diagrams?: DiagramView[];
 };
 
 export function oversizedSkipWarning(result: AnalysisResponse): string | null {

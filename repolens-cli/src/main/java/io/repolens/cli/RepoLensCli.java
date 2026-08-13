@@ -3,6 +3,7 @@ package io.repolens.cli;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.repolens.analyzers.AnalyzersModule;
+import io.repolens.analyzers.DiagramProjector;
 import io.repolens.analyzers.GraphViewProjector;
 import io.repolens.api.AnalysisResponseDto;
 import io.repolens.api.AnalysisResponseMapper;
@@ -151,7 +152,12 @@ public final class RepoLensCli {
             RepositoryModel model = result.model();
             List<AnalysisResult> analyses = result.results();
             GraphView graph = GraphViewProjector.project(model, analyses);
-            AnalysisResponseDto dto = AnalysisResponseMapper.from(model, analyses, graph);
+            AnalysisResponseDto dto = AnalysisResponseMapper.from(
+                    model,
+                    analyses,
+                    graph,
+                    DiagramProjector.projectAll(model)
+            );
 
             if (json) {
                 writeOutput(JSON.writeValueAsString(dto), output);

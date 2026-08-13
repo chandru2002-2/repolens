@@ -1,16 +1,18 @@
 # Project Status
 
-**Date:** 2026-08-11
-**Phase:** Interactive Repository Intelligence (v1.2 feature set)
-**Version:** `0.1.0-SNAPSHOT` (feature set branded v1.2.0)
+**Date:** 2026-08-13
+**Phase:** Interactive Repository Intelligence
+**Version:** `1.5.0`
 
 ## What works
 
 - End-to-end local + public GitHub analysis path
 - CLI: `ingest`, `analyze [--json] [-o file]`, `serve`
 - Web API + packaged Web UI (Cytoscape graph explorer)
-- Diagram modes: Architecture, Package, Class (shared entity ids with Explorer/Inspector)
+- Contributor docs: `CONTRIBUTING.md`, `docs/README.md`, `docs/architecture/REPO_LAYOUT.md`, `./scripts/package-ui.sh`
+- Diagram modes: Architecture, Package, Class, Sequence, ER, DFD, Activity, Deployment, Use Case, State Machine
 - Client-side graph filtering (kinds, relationship types, name search)
+- Deterministic structural facts for specialized diagrams (Java/Spring + config heuristics)
 - Deterministic README / `docs/` documentation extraction and entity matching
 - Documentation-aware Inspector excerpts
 - Repository metadata (local Git + public GitHub API; non-blocking on failure)
@@ -29,7 +31,8 @@
 - Persistent job store
 - AI features
 - Phase B+ languages (C/C++, Swift, PHP, Ruby, …)
-- Sequence / ER / DFD / Activity / Deployment / Use Case / State Machine diagrams
+- Perfect runtime sequence reconstruction (static inference only)
+- Full CFG activity diagrams for arbitrary methods
 - Manifest ingestion, DETECTED_ONLY language status
 
 ## Open product decisions

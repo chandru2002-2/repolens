@@ -6,6 +6,7 @@ import io.repolens.core.model.DocumentationDocument;
 import io.repolens.core.model.DocumentationReference;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.Metric;
+import io.repolens.core.model.NamedDiagram;
 import io.repolens.core.model.Repository;
 import io.repolens.core.model.RepositoryMetadata;
 import io.repolens.core.model.RepositoryModel;
@@ -33,6 +34,15 @@ public final class AnalysisResponseMapper {
             List<AnalysisResult> results,
             GraphView graph
     ) {
+        return from(model, results, graph, List.of());
+    }
+
+    public static AnalysisResponseDto from(
+            RepositoryModel model,
+            List<AnalysisResult> results,
+            GraphView graph,
+            List<NamedDiagram> diagrams
+    ) {
         Repository repository = model.repository();
         String source = repository.origin() == RepositoryOrigin.REMOTE
                 ? repository.remoteUrl().orElse("")
@@ -57,7 +67,8 @@ public final class AnalysisResponseMapper {
                 mapGraph(graph),
                 mapDocumentation(model),
                 mapSymbols(model),
-                mapMetadata(model.metadata())
+                mapMetadata(model.metadata()),
+                mapDiagrams(diagrams)
         );
     }
 
@@ -203,5 +214,21 @@ public final class AnalysisResponseMapper {
                 commit.authoredAt().map(Instant::toString).orElse(null),
                 commit.committedAt().map(Instant::toString).orElse(null)
         );
+    }
+
+    private static List<AnalysisResponseDto.DiagramDto> mapDiagrams(List<NamedDiagram> diagrams) {
+        if (diagrams == null || diagrams.isEmpty()) {
+            return List.of();
+        }
+        return diagrams.stream()
+                .map(diagram -> new AnalysisResponseDto.DiagramDto(
+                        diagram.type(),
+                        diagram.title(),
+                        mapGraph(diagram.graph()),
+                        diagram.emptyMessage().orElse(null),
+                        diagram.totalNodeCount(),
+                        diagram.truncated()
+                ))
+                .toList();
     }
 }

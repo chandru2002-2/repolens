@@ -1,11 +1,13 @@
 package io.repolens.web;
 
+import io.repolens.analyzers.DiagramProjector;
 import io.repolens.analyzers.GraphViewProjector;
 import io.repolens.api.AnalysisJobDto;
 import io.repolens.api.AnalysisResponseDto;
 import io.repolens.api.AnalysisResponseMapper;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
+import io.repolens.core.model.NamedDiagram;
 import io.repolens.core.ports.AnalysisRunner;
 
 import java.util.List;
@@ -69,7 +71,8 @@ public final class AnalysisJobService implements AutoCloseable {
                     analysisRunner.run(new AnalysisRunner.AnalysisRequest(job.source(), job.remote()));
             List<AnalysisResult> results = run.results();
             GraphView graph = GraphViewProjector.project(run.model(), results);
-            AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph);
+            List<NamedDiagram> diagrams = DiagramProjector.projectAll(run.model());
+            AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph, diagrams);
             job.markCompleted(response);
         } catch (Exception ex) {
             job.markFailed(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());

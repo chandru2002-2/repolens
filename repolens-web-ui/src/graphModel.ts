@@ -1,6 +1,33 @@
 import type { GraphEdge, GraphNode } from "./api";
 
-export type GraphViewMode = "architecture" | "package" | "class";
+export type GraphViewMode =
+  | "architecture"
+  | "package"
+  | "class"
+  | "sequence"
+  | "er"
+  | "dfd"
+  | "activity"
+  | "deployment"
+  | "usecase"
+  | "state";
+
+export const DIAGRAM_TABS: Array<{ id: GraphViewMode; label: string; group: "core" | "advanced" }> = [
+  { id: "architecture", label: "Architecture", group: "core" },
+  { id: "package", label: "Package", group: "core" },
+  { id: "class", label: "Class", group: "core" },
+  { id: "sequence", label: "Sequence", group: "advanced" },
+  { id: "er", label: "ER", group: "advanced" },
+  { id: "dfd", label: "DFD", group: "advanced" },
+  { id: "activity", label: "Activity", group: "advanced" },
+  { id: "deployment", label: "Deployment", group: "advanced" },
+  { id: "usecase", label: "Use Case", group: "advanced" },
+  { id: "state", label: "State Machine", group: "advanced" },
+];
+
+export function isCoreDiagram(view: GraphViewMode): boolean {
+  return view === "architecture" || view === "package" || view === "class";
+}
 
 export type Selection =
   | { type: "node"; id: string }
@@ -63,6 +90,26 @@ export const KIND_META: Record<
   method: { title: "Method", icon: "m", short: "METH" },
   field: { title: "Field", icon: ".", short: "FIELD" },
   external: { title: "External", icon: "x", short: "EXT" },
+  actor: { title: "Actor", icon: "A", short: "ACTOR" },
+  controller: { title: "Controller", icon: "C", short: "CTRL" },
+  service: { title: "Service", icon: "S", short: "SVC" },
+  database: { title: "Database", icon: "D", short: "DB" },
+  entity: { title: "Entity", icon: "E", short: "ENT" },
+  primary_key: { title: "Primary Key", icon: "K", short: "PK" },
+  external_entity: { title: "External Entity", icon: "X", short: "EXT" },
+  process: { title: "Process", icon: "P", short: "PROC" },
+  data_store: { title: "Data Store", icon: "S", short: "STORE" },
+  start: { title: "Start", icon: ">", short: "START" },
+  action: { title: "Action", icon: "*", short: "ACT" },
+  decision: { title: "Decision", icon: "?", short: "DEC" },
+  loop: { title: "Loop", icon: "o", short: "LOOP" },
+  end: { title: "End", icon: ".", short: "END" },
+  client: { title: "Client", icon: "B", short: "CLIENT" },
+  container: { title: "Container", icon: "[]", short: "CTN" },
+  cache: { title: "Cache", icon: "c", short: "CACHE" },
+  message_broker: { title: "Message Broker", icon: "Q", short: "MQ" },
+  use_case: { title: "Use Case", icon: "U", short: "UC" },
+  state: { title: "State", icon: "S", short: "STATE" },
 };
 
 export function kindMeta(kind: string) {
@@ -105,7 +152,7 @@ export function neighborIds(edges: GraphEdge[], nodeId: string): Set<string> {
 }
 
 /** Base node kinds for each diagram mode (before user filters). */
-export function kindsForView(view: GraphViewMode): Set<string> {
+export function kindsForView(view: GraphViewMode): Set<string> | null {
   switch (view) {
     case "architecture":
       return new Set(["repository", "module"]);
@@ -114,7 +161,8 @@ export function kindsForView(view: GraphViewMode): Set<string> {
     case "class":
       return new Set(["module", "class", "interface", "enum", "type"]);
     default:
-      return new Set(["repository", "module"]);
+      // Specialized diagrams already arrive pre-projected.
+      return null;
   }
 }
 
@@ -162,6 +210,36 @@ export function filterGraphForView(
   filters: GraphFilterState = DEFAULT_GRAPH_FILTERS,
 ): { nodes: GraphNode[]; edges: GraphEdge[] } {
   const baseKinds = kindsForView(view);
+  if (!baseKinds) {
+    let visible = nodes;
+    const q = filters.query.trim().toLowerCase();
+    if (q) {
+      const matched = new Set(
+        visible
+          .filter(
+            (node) =>
+              node.label.toLowerCase().includes(q) ||
+              node.kind.toLowerCase().includes(q) ||
+              (node.sourceEntityId ?? "").toLowerCase().includes(q),
+          )
+          .map((node) => node.id),
+      );
+      for (const edge of edges) {
+        if (matched.has(edge.fromNodeId) || matched.has(edge.toNodeId)) {
+          matched.add(edge.fromNodeId);
+          matched.add(edge.toNodeId);
+        }
+      }
+      visible = visible.filter((node) => matched.has(node.id));
+    }
+    const visibleIds = new Set(visible.map((node) => node.id));
+    return {
+      nodes: visible,
+      edges: edges.filter(
+        (edge) => visibleIds.has(edge.fromNodeId) && visibleIds.has(edge.toNodeId),
+      ),
+    };
+  }
   const kindAllowed = new Set<string>();
   for (const kind of baseKinds) {
     if (kind === "module" && !filters.showPackages && view === "class") {

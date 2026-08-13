@@ -28,6 +28,7 @@ public final class RepositoryModel {
     private final Map<String, DocumentationDocument> documentsById;
     private final Map<String, DocumentationReference> documentationReferencesById;
     private final RepositoryMetadata metadata;
+    private final Map<String, StructuralFact> structuralFactsById;
 
     private RepositoryModel(Builder builder) {
         this.repository = Objects.requireNonNull(builder.repository, "repository");
@@ -41,6 +42,8 @@ public final class RepositoryModel {
         this.documentsById = Map.copyOf(builder.documentsById);
         this.documentationReferencesById = Map.copyOf(builder.documentationReferencesById);
         this.metadata = Objects.requireNonNullElse(builder.metadata, RepositoryMetadata.EMPTY);
+        // Preserve insertion order — diagram projectors process facts in category order.
+        this.structuralFactsById = Collections.unmodifiableMap(new LinkedHashMap<>(builder.structuralFactsById));
     }
 
     public Repository repository() {
@@ -110,6 +113,17 @@ public final class RepositoryModel {
         return metadata;
     }
 
+    public Collection<StructuralFact> structuralFacts() {
+        return structuralFactsById.values();
+    }
+
+    public List<StructuralFact> structuralFacts(String category) {
+        Objects.requireNonNull(category, "category");
+        return structuralFactsById.values().stream()
+                .filter(fact -> category.equals(fact.category()))
+                .toList();
+    }
+
     /** Returns a copy of this model with replaced metadata (pipeline enrichment). */
     public RepositoryModel withMetadata(RepositoryMetadata metadata) {
         Objects.requireNonNull(metadata, "metadata");
@@ -123,6 +137,7 @@ public final class RepositoryModel {
         metrics.forEach(builder::addMetric);
         documentsById.values().forEach(builder::addDocumentation);
         documentationReferencesById.values().forEach(builder::addDocumentationReference);
+        structuralFactsById.values().forEach(builder::addStructuralFact);
         return builder.build();
     }
 
@@ -149,6 +164,7 @@ public final class RepositoryModel {
         private final List<Metric> metrics = new ArrayList<>();
         private final Map<String, DocumentationDocument> documentsById = new LinkedHashMap<>();
         private final Map<String, DocumentationReference> documentationReferencesById = new LinkedHashMap<>();
+        private final Map<String, StructuralFact> structuralFactsById = new LinkedHashMap<>();
         private RepositoryMetadata metadata = RepositoryMetadata.EMPTY;
 
         private Builder(Repository repository) {
@@ -234,6 +250,15 @@ public final class RepositoryModel {
 
         public Builder metadata(RepositoryMetadata metadata) {
             this.metadata = Objects.requireNonNull(metadata, "metadata");
+            return this;
+        }
+
+        public Builder addStructuralFact(StructuralFact fact) {
+            Objects.requireNonNull(fact, "fact");
+            if (structuralFactsById.containsKey(fact.id())) {
+                throw new IllegalArgumentException("duplicate structural fact id: " + fact.id());
+            }
+            structuralFactsById.put(fact.id(), fact);
             return this;
         }
 

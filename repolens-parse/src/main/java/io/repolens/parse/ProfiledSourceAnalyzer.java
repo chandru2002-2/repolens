@@ -211,6 +211,7 @@ public final class ProfiledSourceAnalyzer implements SourceAnalyzer {
             ));
         }
 
+        StructuralFactExtractor.extract(builder, workingTree, inventory, symbols);
         DocumentationIndexer.index(builder, workingTree, inventory, symbols, modules);
         return builder.build();
     }

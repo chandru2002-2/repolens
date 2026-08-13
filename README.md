@@ -6,18 +6,6 @@ Core analysis is deterministic and works without an LLM.
 
 ## What is RepoLens?
 
-RepoLens is a repository intelligence tool that helps developers
-understand unfamiliar codebases through static analysis.
-
-It provides interactive views of repository architecture,
-packages, symbols, and relationships.
-
-## Live Demo
-
-https://repolens-dsce.onrender.com/
-
-## What is RepoLens?
-
 RepoLens helps developers understand unfamiliar codebases through static analysis.
 
 It provides interactive views of:
@@ -78,7 +66,9 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 | `repolens-api-model` | Stable v1 JSON DTOs |
 | `repolens-cli` | CLI adapter |
 | `repolens-web` | Javalin API + packaged UI |
-| `repolens-web-ui` | Vite/React frontend source |
+| `repolens-web-ui` | Vite/React frontend source (npm; not a Gradle module) |
+
+Layout details: [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT.md). Docs index: [docs/README.md](docs/README.md).
 
 ## Requirements
 
@@ -86,25 +76,33 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 - Git (for remote GitHub clone)
 - Node.js 20+ (only to rebuild the UI)
 
-## Diagrams
+## Interactive Diagrams
 
-RepoLens visualizes repository structure through interactive diagrams in the web UI:
+### Available
 
 - **Architecture** — repository and package/module layout with package dependencies
 - **Package** — package-to-package dependency diagram
-- **Class** — classes/interfaces with inheritance (`extends`) and implementation (`implements`) when present in the model
-- Shared **Explorer** tree and **Inspector** stay linked to the same underlying entity ids across all views
+- **Class** — classes/interfaces with inheritance (`extends`) / implementation (`implements`) when present
+- **Sequence** — inferred controller → service → repository interaction chains (static)
+- **ER** — JPA `@Entity` models and association cardinality when annotated
+- **DFD** — data-flow sketch from API processes, services, and data stores
+- **Activity** — simplified per-method activity summary (calls / decisions / end)
+- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints
+- **Use Case** — user-facing operations inferred from REST mappings / controllers
+- **State Machine** — enum/status states and only confidently observed transitions
+
+Core views (Architecture / Package / Class) filter the primary graph. Specialized diagrams are separate projections from deterministic structural facts. Empty diagrams show an explanatory message instead of inventing relationships. Large graphs are capped (node/edge limits) with a truncation notice.
 
 Graph filtering (client-side only — no re-analysis):
 
-- Toggle packages, classes, interfaces, enums, methods, and fields
+- Toggle packages, classes, interfaces, enums, methods, and fields (core views)
 - Toggle relationship types (`Depends on`, `Extends`, `Implements`, `Contains`)
-- Name search and internal-only filtering
+- Name search across the active diagram
 
 Documentation-aware inspection:
 
 - Deterministic extraction from `README.md` / README files and `docs/**/*.md`
-- Inspector shows matched excerpts only when a class, package, or similar entity is explicitly referenced (for example `` `UserService` `` or `io.example.auth.JwtFilter`)
+- Inspector shows matched excerpts only when a class, package, or similar entity is explicitly referenced
 - Documentation is supplemental context, never the source of truth for structure
 
 Repository information (Explorer):
@@ -140,23 +138,31 @@ Open [http://localhost:8080](http://localhost:8080).
 ### Rebuild UI
 
 ```bash
-cd repolens-web-ui && npm install && npm run build
+./scripts/package-ui.sh
+```
+
+Or manually:
+
+```bash
+cd repolens-web-ui && npm install && npm test && npm run build
 rm -rf ../repolens-web/src/main/resources/public
 mkdir -p ../repolens-web/src/main/resources/public
 cp -R dist/. ../repolens-web/src/main/resources/public/
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full developer workflow.
 
 ## Continuous Integration
 
 GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main`. It automatically:
 
 - runs backend tests with `./gradlew test` (Java 21)
-- installs and builds the frontend in `repolens-web-ui` (`npm ci` / `npm run build`)
+- installs, tests, and builds the frontend in `repolens-web-ui` (`npm ci` / `npm test` / `npm run build`)
 - validates that the existing `Dockerfile` builds successfully (image is not pushed)
 
 ## Architecture decisions
 
-See [docs/adr/](docs/adr/).
+See [docs/](docs/README.md) and [docs/adr/](docs/adr/).
 
 ## License
 

@@ -18,7 +18,8 @@ public record AnalysisResponseDto(
         GraphViewDto graph,
         List<DocumentationDto> documentation,
         List<SymbolDetailDto> symbols,
-        RepositoryMetadataDto metadata
+        RepositoryMetadataDto metadata,
+        List<DiagramDto> diagrams
 ) {
     public static final String SCHEMA_VERSION = "v1";
 
@@ -34,9 +35,13 @@ public record AnalysisResponseDto(
         if (symbols == null) {
             symbols = List.of();
         }
+        if (diagrams == null) {
+            diagrams = List.of();
+        }
         results = List.copyOf(results);
         documentation = List.copyOf(documentation);
         symbols = List.copyOf(symbols);
+        diagrams = List.copyOf(diagrams);
     }
 
     /** Backward-compatible factory used by older call sites / tests. */
@@ -55,7 +60,8 @@ public record AnalysisResponseDto(
                 graph,
                 List.of(),
                 List.of(),
-                null
+                null,
+                List.of()
         );
     }
 
@@ -237,5 +243,20 @@ public record AnalysisResponseDto(
             String authoredAt,
             String committedAt
     ) {
+    }
+
+    public record DiagramDto(
+            String type,
+            String title,
+            GraphViewDto graph,
+            String emptyMessage,
+            int totalNodeCount,
+            boolean truncated
+    ) {
+        public DiagramDto {
+            Objects.requireNonNull(type, "type");
+            Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(graph, "graph");
+        }
     }
 }

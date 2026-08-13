@@ -6,6 +6,7 @@ import {
   kindMeta,
   type ExplorerItem,
 } from "./graphModel";
+import { PanelCollapseToggle } from "./PanelCollapseToggle";
 
 type Props = {
   nodes: GraphNode[];
@@ -17,6 +18,8 @@ type Props = {
   skipWarning?: string | null;
   metadata?: RepositoryMetadata | null;
   metadataWarning?: string | null;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
 };
 
 function TreeNode({
@@ -87,14 +90,34 @@ export function ExplorerPanel({
   skipWarning = null,
   metadata = null,
   metadataWarning = null,
+  collapsed,
+  onToggleCollapsed,
 }: Props) {
   const tree = buildExplorerTree(nodes, edges);
   const rows = buildMetadataRows(metadata, repoName);
 
   return (
-    <aside className="panel explorer-panel">
-      <div className="panel-head">Repository</div>
-      <div className="panel-body">
+    <aside
+      className={collapsed ? "panel explorer-panel collapsed" : "panel explorer-panel"}
+      aria-label="Repository"
+    >
+      <div className="panel-head">
+        <span className="panel-head-title">Repository</span>
+        <PanelCollapseToggle
+          collapsed={collapsed}
+          side="start"
+          labelExpand="Expand repository"
+          labelCollapse="Collapse repository"
+          controlsId="repository-body"
+          onToggle={onToggleCollapsed}
+        />
+      </div>
+      <div
+        id="repository-body"
+        className="panel-body"
+        hidden={collapsed}
+        aria-hidden={collapsed}
+      >
         <p className="panel-source">{repoName}</p>
         <p className="panel-source">{repoSource}</p>
         {skipWarning ? (

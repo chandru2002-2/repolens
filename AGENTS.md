@@ -22,7 +22,10 @@ Guidance for coding agents working on RepoLens.
 - Analyzers in `repolens-analyzers`
 - External JSON contracts in `repolens-api-model`
 - CLI in `repolens-cli`
-- Web in `repolens-web`
+- Web API + packaged static UI in `repolens-web`
+- Web UI **source** in `repolens-web-ui` (npm; package into `repolens-web` via `./scripts/package-ui.sh`)
+
+Do not flatten or merge these modules. Layout rationale: [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT.md).
 
 ## Before implementing features
 
@@ -30,6 +33,7 @@ Guidance for coding agents working on RepoLens.
 - Update `PROJECT_STATUS.md` when phase changes
 - Keep Spring Boot out of v1 (see ADR-005)
 - Do not introduce microservices/K8s/required DBs casually
+- Follow [CONTRIBUTING.md](CONTRIBUTING.md) for local workflow
 
 ## Verification
 
@@ -37,6 +41,13 @@ Guidance for coding agents working on RepoLens.
 ./gradlew test
 ./gradlew :repolens-cli:run --args='analyze <path>'
 ./gradlew :repolens-cli:run --args='serve --port 8080'
+```
+
+When changing the UI:
+
+```bash
+cd repolens-web-ui && npm test && npm run build
+./scripts/package-ui.sh   # from repo root, after UI build (script also builds)
 ```
 
 Architecture boundaries are enforced with ArchUnit in `repolens-cli` tests.

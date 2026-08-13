@@ -25,7 +25,7 @@ jobs:
         run: ./gradlew test --no-daemon
 
   frontend:
-    name: Frontend (npm build)
+    name: Frontend (npm test + build)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -43,6 +43,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
