@@ -6,7 +6,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 /**
- * In-memory analysis job record.
+ * In-memory analysis job / session record.
  */
 public final class AnalysisJob {
 

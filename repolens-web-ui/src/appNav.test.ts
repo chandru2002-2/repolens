@@ -6,6 +6,8 @@ import {
   phaseForNewLens,
   showNewLensControl,
   showsCreationForm,
+  analyzeHint,
+  shouldClearSubmitError,
 } from "./appNav";
 
 describe("appNav", () => {
@@ -34,5 +36,17 @@ describe("appNav", () => {
     expect(explorerGridClass(true, true)).toBe(
       "explorer explorer-collapsed inspector-collapsed",
     );
+  });
+
+  it("does not show a previous failed job while a new analysis is running", () => {
+    expect(analyzeHint("running", { status: "FAILED" })).toBe("Analyzing…");
+    expect(analyzeHint("running", null)).toBe("Analyzing…");
+    expect(analyzeHint("running", { status: "RUNNING" })).toBe("Job running…");
+  });
+
+  it("clears submit errors when the repository input changes", () => {
+    expect(shouldClearSubmitError("error")).toBe(true);
+    expect(shouldClearSubmitError("landing")).toBe(true);
+    expect(shouldClearSubmitError("running")).toBe(false);
   });
 });

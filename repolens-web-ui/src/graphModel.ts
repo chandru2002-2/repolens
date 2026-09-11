@@ -436,6 +436,28 @@ export function searchNodes(nodes: GraphNode[], query: string): SearchHit[] {
   if (!q) {
     return [];
   }
+  const rank = (kind: string) => {
+    switch (kind) {
+      case "class":
+        return 0;
+      case "interface":
+        return 1;
+      case "enum":
+        return 2;
+      case "type":
+        return 3;
+      case "module":
+        return 4;
+      case "function":
+        return 5;
+      case "method":
+        return 6;
+      case "field":
+        return 8;
+      default:
+        return 7;
+    }
+  };
   return nodes
     .filter(
       (node) =>
@@ -443,6 +465,11 @@ export function searchNodes(nodes: GraphNode[], query: string): SearchHit[] {
         node.kind.toLowerCase().includes(q) ||
         (node.sourceEntityId ?? "").toLowerCase().includes(q),
     )
+    .sort((a, b) => {
+      const aExact = a.label.toLowerCase() === q ? 0 : 1;
+      const bExact = b.label.toLowerCase() === q ? 0 : 1;
+      return aExact - bExact || rank(a.kind) - rank(b.kind) || a.label.localeCompare(b.label);
+    })
     .slice(0, 40)
     .map((node) => ({ id: node.id, label: node.label, kind: node.kind }));
 }
@@ -466,19 +493,20 @@ export function buildExplorerTree(
     childrenOf.set(edge.fromNodeId, list);
   }
 
+  const visiting = new Set<string>();
   const build = (id: string, depth: number): ExplorerItem | null => {
     const node = nodeById(nodes, id);
-    if (!node) {
+    if (!node || visiting.has(id)) {
       return null;
     }
-    // Keep explorer readable: stop expanding at type symbols (members stay in inspector).
-    const childIds =
-      depth >= 2 || SYMBOL_KINDS.has(node.kind) || MEMBER_KINDS.has(node.kind)
-        ? []
-        : (childrenOf.get(id) ?? []).filter((childId) => {
-            const child = nodeById(nodes, childId);
-            return child && !MEMBER_KINDS.has(child.kind);
-          });
+    visiting.add(id);
+    // Members stay in the inspector. Nested types may hang off an enclosing type.
+    const childIds = MEMBER_KINDS.has(node.kind)
+      ? []
+      : (childrenOf.get(id) ?? []).filter((childId) => {
+          const child = nodeById(nodes, childId);
+          return child && !MEMBER_KINDS.has(child.kind);
+        });
     const children = childIds
       .map((childId) => build(childId, depth + 1))
       .filter((item): item is ExplorerItem => item !== null)
@@ -487,6 +515,7 @@ export function buildExplorerTree(
           kind === "module" ? 0 : SYMBOL_KINDS.has(kind) ? 1 : 2;
         return rank(a.kind) - rank(b.kind) || a.label.localeCompare(b.label);
       });
+    visiting.delete(id);
     return {
       id: node.id,
       label: node.label,

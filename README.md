@@ -83,15 +83,21 @@ Layout details: [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT
 - **Architecture** — repository and package/module layout with package dependencies
 - **Package** — package-to-package dependency diagram
 - **Class** — classes/interfaces with inheritance (`extends`) / implementation (`implements`) when present
-- **Sequence** — inferred controller → service → repository interaction chains (static)
-- **ER** — JPA `@Entity` models and association cardinality when annotated
+- **Sequence** — inferred controller / service / repository roles plus evidence-backed CALLS (static; confidence-tagged)
+- **ER** — JPA `@Entity` models and association cardinality when annotated (`mappedBy` / `@JoinColumn` captured in detail when present)
 - **DFD** — data-flow sketch from API processes, services, and data stores
-- **Activity** — simplified per-method activity summary (calls / decisions / end)
-- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints
-- **Use Case** — user-facing operations inferred from REST mappings / controllers
-- **State Machine** — enum/status states and only confidently observed transitions
+- **Activity** — simplified per-method activity summary (calls / decisions / end); not a full CFG
+- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints; Compose links only from `depends_on`
+- **Use Case** — user-facing operations inferred from REST mappings / controllers (class + method path combine when present)
+- **State Machine** — enum/status states; transitions only from assignment/return/transition-call evidence (not enum or switch order)
 
 Core views (Architecture / Package / Class) filter the primary graph. Specialized diagrams are separate projections from deterministic structural facts. Empty diagrams show an explanatory message instead of inventing relationships. Large graphs are capped (node/edge limits) with a truncation notice.
+
+CALLS confidence (static analysis):
+
+- **high** — field / constructor / setter-typed receiver, or static `Type.method`
+- **medium** — capitalized receiver name matches a known type
+- Relationships below the emit threshold are omitted rather than guessed
 
 Graph filtering (client-side only — no re-analysis):
 

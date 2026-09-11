@@ -24,3 +24,7 @@ Exact numeric limits will be configured at implementation time.
 - Safer default hosted/self-hosted behavior
 - Some very large monorepos may require explicit override flags
 - Ingestion becomes a security-sensitive module
+- Remote clones are cached under `~/.repolens/cache/remotes/{owner}/{repo}` and
+  reused whenever `.git` exists. **The cache is not refreshed** (no `fetch`/`pull`).
+  Stale or locally modified cached trees can be analyzed until the directory is
+  deleted. Treat cache freshness as a future issue, not a v1.6 guarantee.

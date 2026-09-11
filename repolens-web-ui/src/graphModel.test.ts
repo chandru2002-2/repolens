@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { docsForEntity, oversizedSkipWarning, type AnalysisResponse } from "./api";
 import {
   DEFAULT_GRAPH_FILTERS,
+  buildExplorerTree,
   filterGraphForView,
+  searchNodes,
   type GraphFilterState,
 } from "./graphModel";
 
@@ -73,6 +75,21 @@ const sample: AnalysisResponse = {
   symbols: [],
 };
 
+describe("search ranking", () => {
+  it("ranks classes ahead of duplicate field hits", () => {
+    const hits = searchNodes(
+      [
+        { id: "f1", label: "owner", kind: "field", sourceEntityId: null },
+        { id: "f2", label: "owner", kind: "field", sourceEntityId: null },
+        { id: "c1", label: "Owner", kind: "class", sourceEntityId: null },
+      ],
+      "Owner",
+    );
+    expect(hits[0]?.kind).toBe("class");
+    expect(hits[0]?.label).toBe("Owner");
+  });
+});
+
 describe("diagram selector filters", () => {
   it("renders package diagram nodes without classes by default", () => {
     const filtered = filterGraphForView(
@@ -123,5 +140,33 @@ describe("inspector documentation", () => {
 
   it("keeps oversized-file warnings available", () => {
     expect(oversizedSkipWarning(sample)).toContain("5 MB");
+  });
+});
+
+describe("explorer tree", () => {
+  it("nests classes under their enclosing type", () => {
+    const tree = buildExplorerTree(
+      [
+        { id: "n-repo", label: "demo", kind: "repository", sourceEntityId: "r1" },
+        { id: "n-pkg", label: "demo", kind: "module", sourceEntityId: "module:demo" },
+        { id: "n-outer", label: "PetControllerTests", kind: "class", sourceEntityId: "sym:outer" },
+        { id: "n-inner", label: "ProcessCreationFormHasErrors", kind: "class", sourceEntityId: "sym:inner" },
+        { id: "n-nested", label: "Nested", kind: "class", sourceEntityId: "sym:nested" },
+        { id: "n-method", label: "initBinder", kind: "method", sourceEntityId: "sym:m1" },
+      ],
+      [
+        { id: "e1", fromNodeId: "n-repo", toNodeId: "n-pkg", type: "CONTAINS" },
+        { id: "e2", fromNodeId: "n-pkg", toNodeId: "n-outer", type: "CONTAINS" },
+        { id: "e3", fromNodeId: "n-outer", toNodeId: "n-inner", type: "CONTAINS" },
+        { id: "e4", fromNodeId: "n-inner", toNodeId: "n-nested", type: "CONTAINS" },
+        { id: "e5", fromNodeId: "n-outer", toNodeId: "n-method", type: "CONTAINS" },
+      ],
+    );
+    const pkg = tree[0]?.children.find((item) => item.kind === "module");
+    const outer = pkg?.children.find((item) => item.label === "PetControllerTests");
+    expect(pkg?.children.some((item) => item.label === "ProcessCreationFormHasErrors")).toBe(false);
+    expect(outer?.children.map((item) => item.label)).toEqual(["ProcessCreationFormHasErrors"]);
+    expect(outer?.children[0]?.children.map((item) => item.label)).toEqual(["Nested"]);
+    expect(outer?.children.some((item) => item.kind === "method")).toBe(false);
   });
 });

@@ -450,14 +450,31 @@ input {
   display: grid;
   grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(240px, 300px);
   grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "explorer graph inspector";
   overflow: hidden;
   border-bottom: 1px solid var(--line-strong);
+}
+
+.explorer-panel,
+.details-panel {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+}
+
+.explorer-panel {
+  grid-area: explorer;
+}
+
+.details-panel {
+  grid-area: inspector;
 }
 
 .panel {
   background: var(--panel);
   border-right: 1px solid var(--line-strong);
-  overflow: auto;
+  overflow: hidden;
   min-height: 0;
   min-width: 0;
   padding: 0;
@@ -639,6 +656,9 @@ input {
 }
 
 .panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
   padding: 0.45rem 0.55rem 0.75rem;
 }
 
@@ -812,6 +832,10 @@ input {
 }
 
 .graph-stage {
+  grid-area: graph;
+  position: relative;
+  z-index: 1;
+  isolation: isolate;
   min-height: 0;
   min-width: 0;
   display: flex;
@@ -979,6 +1003,9 @@ input {
 
 .graph-shell {
   position: relative;
+  z-index: 1;
+  isolation: isolate;
+  contain: layout paint;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -1023,9 +1050,16 @@ input {
 }
 
 .graph-canvas {
+  position: relative;
   width: 100%;
   height: 100%;
   min-height: 0;
+  overflow: hidden;
+}
+
+.graph-canvas canvas {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .detail-kicker {
@@ -1162,7 +1196,12 @@ input {
 
 .rel-arrow {
   color: var(--accent);
-  width: 0.9rem;
+  width: 1.1rem;
+  flex: 0 0 auto;
+}
+
+.rel-kind {
+  margin-left: 0.15rem;
 }
 
 .status-bar {
@@ -1229,34 +1268,38 @@ input {
 
 @media (max-width: 1100px) {
   .explorer {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 28vh) minmax(0, 1fr) minmax(0, 28vh);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 32vh) minmax(160px, 1fr) minmax(0, 28vh);
+    grid-template-areas:
+      "explorer"
+      "graph"
+      "inspector";
   }
 
   .explorer.inspector-collapsed {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 28vh) minmax(0, 1fr) 44px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 32vh) minmax(160px, 1fr) 44px;
   }
 
   .explorer.explorer-collapsed {
-    grid-template-columns: 1fr;
-    grid-template-rows: 44px minmax(0, 1fr) minmax(0, 28vh);
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 44px minmax(160px, 1fr) minmax(0, 28vh);
   }
 
   .explorer.explorer-collapsed.inspector-collapsed {
-    grid-template-columns: 1fr;
-    grid-template-rows: 44px minmax(0, 1fr) 44px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: 44px minmax(160px, 1fr) 44px;
+  }
+
+  .explorer-panel,
+  .details-panel,
+  .graph-stage {
+    max-height: 100%;
   }
 
   .panel {
     border-right: 0;
     border-bottom: 1px solid var(--line-strong);
-    max-height: none;
-  }
-
-  .details-panel.collapsed,
-  .explorer-panel.collapsed {
-    max-height: none;
   }
 
   .details-panel.collapsed .panel-head,

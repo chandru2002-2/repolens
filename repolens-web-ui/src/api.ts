@@ -72,6 +72,7 @@ export type DiagramView = {
     edges: GraphEdge[];
   };
   emptyMessage?: string | null;
+  advisoryMessage?: string | null;
   totalNodeCount?: number;
   truncated?: boolean;
 };

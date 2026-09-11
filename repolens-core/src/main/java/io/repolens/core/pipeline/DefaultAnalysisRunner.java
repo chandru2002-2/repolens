@@ -70,7 +70,7 @@ public final class DefaultAnalysisRunner implements AnalysisRunner {
         for (Analyzer analyzer : analyzers) {
             results.add(analyzer.analyze(model));
         }
-        return new AnalysisRunResult(model, results);
+        return new AnalysisRunResult(model, results, ingestion.workingTree());
     }
 
     static Optional<AnalysisResult> ingestNotes(WorkingTreeInventory inventory) {

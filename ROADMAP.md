@@ -16,8 +16,9 @@
 
 1. **UI polish** — richer node details, filters, export
 2. **Multi-arch Tree-sitter natives** — avoid structural fallback on Apple Silicon
-3. **Optional AI explanations** — behind feature flag, consuming structured results
+3. **Optional AI explanations** — behind feature flag, consuming structured analysis results
 4. **Persistent job/cache store** (optional SQLite)
+5. **Remote clone freshness** — fetch/pull or TTL for `~/.repolens/cache/remotes` (v1.6 reuses `.git` without updating; not a release blocker)
 
 ## Non-goals (near term)
 

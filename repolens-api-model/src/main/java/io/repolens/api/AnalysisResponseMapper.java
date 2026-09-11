@@ -160,6 +160,8 @@ public final class AnalysisResponseMapper {
                     .filter(s -> s.parentSymbolId().orElse("").equals(symbol.id()))
                     .filter(s -> s.kind() == SymbolKind.FIELD)
                     .map(Symbol::name)
+                    .filter(name -> name != null && !name.isBlank() && !"null".equals(name))
+                    .distinct()
                     .sorted()
                     .toList();
             List<String> methods = model.symbols().stream()
@@ -226,6 +228,7 @@ public final class AnalysisResponseMapper {
                         diagram.title(),
                         mapGraph(diagram.graph()),
                         diagram.emptyMessage().orElse(null),
+                        diagram.advisoryMessage().orElse(null),
                         diagram.totalNodeCount(),
                         diagram.truncated()
                 ))

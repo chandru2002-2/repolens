@@ -250,6 +250,7 @@ public record AnalysisResponseDto(
             String title,
             GraphViewDto graph,
             String emptyMessage,
+            String advisoryMessage,
             int totalNodeCount,
             boolean truncated
     ) {

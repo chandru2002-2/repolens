@@ -60,6 +60,9 @@ public final class DiagramProjector {
         // Roles before calls so node kinds stay controller/service/repository.
         for (StructuralFact fact : facts) {
             if (Set.of("controller", "service", "repository").contains(fact.kind())) {
+                if (isTestParticipant(model, fact.label(), fact.sourceEntityId())) {
+                    continue;
+                }
                 String id = nodeId(fact);
                 graph.add(id, fact.label(), fact.kind(), fact.sourceEntityId());
                 if ("controller".equals(fact.kind())) {
@@ -68,11 +71,16 @@ public final class DiagramProjector {
             }
         }
 
+        boolean anyCallEdge = false;
         for (StructuralFact fact : facts) {
             if (!"call".equals(fact.kind())) {
                 continue;
             }
             if (fact.sourceEntityId().isEmpty() || fact.targetEntityId().isEmpty()) {
+                continue;
+            }
+            if (isTestParticipant(model, fact.label(), fact.sourceEntityId())
+                    || isTestParticipant(model, null, fact.targetEntityId())) {
                 continue;
             }
             String from = "node:" + fact.sourceEntityId().get();
@@ -81,12 +89,13 @@ public final class DiagramProjector {
             ensureSymbolNode(graph, model, fact.targetEntityId().get());
             String label = fact.detail().orElse("call");
             graph.edge("seq-call:" + fact.id(), from, to, "CALLS:" + label);
+            anyCallEdge = true;
         }
 
-        // Link controller->service->repository by role when calls missing
-        linkRoles(graph, facts, "controller", "service");
-        linkRoles(graph, facts, "service", "repository");
-        if (hasDb) {
+        // Do not invent controller→service→repository edges from roles alone.
+        // Only connect repository→Database when a database role was detected and
+        // there is at least one evidence-backed call edge in the diagram.
+        if (hasDb && anyCallEdge) {
             for (StructuralFact fact : facts) {
                 if ("repository".equals(fact.kind())) {
                     graph.edge("seq:repo-db:" + fact.id(), nodeId(fact), "node:db:database", "CALLS");
@@ -94,18 +103,23 @@ public final class DiagramProjector {
             }
         }
 
-        return graph.toDiagram("sequence", "Sequence",
+        NamedDiagram diagram = graph.toDiagram("sequence", "Sequence",
                 "No statically resolvable interaction chain was found.");
+        if (diagram.graph().nodes().stream().allMatch(n ->
+                "actor".equals(n.kind()) || "database".equals(n.kind()))) {
+            return NamedDiagram.empty(
+                    "sequence",
+                    "Sequence",
+                    "No statically resolvable interaction chain was found (controller/service/repository calls)."
+            );
+        }
+        return diagram;
     }
 
     static NamedDiagram projectEr(RepositoryModel model) {
         List<StructuralFact> facts = model.structuralFacts("er");
         if (facts.stream().noneMatch(f -> f.kind().equals("entity"))) {
-            return NamedDiagram.empty(
-                    "er",
-                    "ER",
-                    "No JPA/persistence entities were detected (@Entity)."
-            );
+            return NamedDiagram.empty("er", "ER", erEmptyMessage(model));
         }
         Builder graph = new Builder("er");
         // Two passes: Map.copyOf does not preserve insertion order, so entity nodes
@@ -142,7 +156,12 @@ public final class DiagramProjector {
                 graph.edge("er-rel:" + fact.id(), from, to, fact.kind().toUpperCase(Locale.ROOT));
             }
         }
-        return graph.toDiagram("er", "ER", "No entity relationships were detected.");
+        return graph.toDiagram(
+                "er",
+                "ER",
+                erEmptyMessage(model),
+                "Entities were detected; no persistence relationships could be established."
+        );
     }
 
     private static boolean isErRelationshipKind(String kind) {
@@ -275,14 +294,7 @@ public final class DiagramProjector {
                 graph.edge("deploy-link:" + fact.id(), from, to, "DEPENDS_ON");
             }
         }
-        // Connect app services to databases/caches when both exist
-        List<String> apps = graph.nodesOfKinds(Set.of("service", "container", "application"));
-        List<String> stores = graph.nodesOfKinds(Set.of("database", "cache", "message_broker"));
-        for (String app : apps) {
-            for (String store : stores) {
-                graph.edge("deploy:" + app + "->" + store, app, store, "DEPENDS_ON");
-            }
-        }
+        // Do not invent app→store edges for every pair; only evidence-backed links above.
         return graph.toDiagram("deployment", "Deployment", "No deployment nodes were detected.");
     }
 
@@ -342,13 +354,18 @@ public final class DiagramProjector {
             for (Symbol symbol : enums) {
                 graph.add("node:" + symbol.id(), symbol.name(), "state", Optional.of(symbol.id()));
             }
-            return graph.toDiagram("state", "State Machine",
-                    "States detected as enums; no transitions could be established confidently.");
+            return graph.toDiagram(
+                    "state",
+                    "State Machine",
+                    "No state model was detected (enums / status transitions).",
+                    "States detected as enums; no transitions could be established confidently."
+            );
         }
         Builder graph = new Builder("state");
         for (StructuralFact fact : states) {
             graph.add("node:state:" + fact.label(), fact.label(), "state", fact.sourceEntityId());
         }
+        int transitions = 0;
         for (StructuralFact fact : facts) {
             if (!"transition".equals(fact.kind())) {
                 continue;
@@ -362,18 +379,17 @@ public final class DiagramProjector {
             graph.add(from, parts[0].trim(), "state", fact.sourceEntityId());
             graph.add(to, parts[1].trim(), "state", fact.sourceEntityId());
             graph.edge("state:" + fact.id(), from, to, "TRANSITION");
+            transitions++;
         }
-        return graph.toDiagram("state", "State Machine", "No state transitions were detected.");
-    }
-
-    private static void linkRoles(Builder graph, List<StructuralFact> facts, String fromRole, String toRole) {
-        List<StructuralFact> from = facts.stream().filter(f -> fromRole.equals(f.kind())).toList();
-        List<StructuralFact> to = facts.stream().filter(f -> toRole.equals(f.kind())).toList();
-        for (StructuralFact a : from) {
-            for (StructuralFact b : to) {
-                graph.edge("seq-role:" + a.id() + "->" + b.id(), nodeId(a), nodeId(b), "CALLS");
-            }
-        }
+        return graph.toDiagram(
+                "state",
+                "State Machine",
+                "No state transitions were detected.",
+                transitions == 0
+                        ? "States detected; no transitions could be established confidently "
+                        + "(enum/switch order alone is not treated as evidence)."
+                        : null
+        );
     }
 
     private static void ensureSymbolNode(Builder graph, RepositoryModel model, String symbolId) {
@@ -382,12 +398,51 @@ public final class DiagramProjector {
             return;
         }
         Optional<Symbol> symbol = model.findSymbol(symbolId);
+        if (symbol.isPresent() && isTestName(symbol.get().name())) {
+            return;
+        }
         if (symbol.isPresent()) {
             graph.add(nodeId, symbol.get().name(), symbol.get().kind().name().toLowerCase(Locale.ROOT),
                     Optional.of(symbolId));
         } else {
             graph.add(nodeId, symbolId, "type", Optional.of(symbolId));
         }
+    }
+
+    static boolean isTestName(String name) {
+        if (name == null || name.isBlank()) {
+            return false;
+        }
+        String simple = name;
+        int dot = simple.lastIndexOf('.');
+        if (dot >= 0) {
+            simple = simple.substring(dot + 1);
+        }
+        int dollar = simple.lastIndexOf('$');
+        if (dollar >= 0) {
+            simple = simple.substring(dollar + 1);
+        }
+        return simple.endsWith("Tests") || simple.endsWith("Test");
+    }
+
+    private static boolean isTestParticipant(RepositoryModel model, String label, Optional<String> symbolId) {
+        if (isTestName(label)) {
+            return true;
+        }
+        if (symbolId == null || symbolId.isEmpty()) {
+            return false;
+        }
+        return model.findSymbol(symbolId.get()).map(s -> isTestName(s.name())).orElse(false);
+    }
+
+    static String erEmptyMessage(RepositoryModel model) {
+        boolean java = model.files().stream().anyMatch(file ->
+                "java".equalsIgnoreCase(file.language())
+                        || file.path().toLowerCase(Locale.ROOT).endsWith(".java"));
+        if (java) {
+            return "No JPA/persistence entities were detected.";
+        }
+        return "No supported persistence entities were detected.";
     }
 
     private static String nodeId(StructuralFact fact) {
@@ -414,6 +469,7 @@ public final class DiagramProjector {
         private final List<GraphView.Edge> edges = new ArrayList<>();
         private final Set<String> edgeKeys = new HashSet<>();
         private int totalNodes = 0;
+        private int totalEdges = 0;
         private boolean truncated = false;
 
         Builder(String type) {
@@ -444,18 +500,12 @@ public final class DiagramProjector {
             if (!edgeKeys.add(key)) {
                 return;
             }
+            totalEdges++;
             if (edges.size() >= MAX_EDGES) {
                 truncated = true;
                 return;
             }
             edges.add(new GraphView.Edge(id, from, to, type));
-        }
-
-        List<String> nodesOfKinds(Set<String> kinds) {
-            return nodes.values().stream()
-                    .filter(n -> kinds.contains(n.kind()))
-                    .map(GraphView.Node::id)
-                    .toList();
         }
 
         String findByLabel(String label) {
@@ -467,14 +517,38 @@ public final class DiagramProjector {
         }
 
         NamedDiagram toDiagram(String type, String title, String emptyMessage) {
+            return toDiagram(type, title, emptyMessage, null);
+        }
+
+        NamedDiagram toDiagram(String type, String title, String emptyMessage, String noEdgeAdvisory) {
             if (nodes.isEmpty()) {
                 return NamedDiagram.empty(type, title, emptyMessage);
             }
             GraphView graph = new GraphView("diagram:" + type, List.copyOf(nodes.values()), List.copyOf(edges));
-            Optional<String> note = truncated
-                    ? Optional.of("Showing " + nodes.size() + " of " + totalNodes + " nodes (large-repository limit).")
-                    : Optional.empty();
-            return new NamedDiagram(type, title, graph, note, totalNodes, truncated);
+            Optional<String> advisory = Optional.empty();
+            if (truncated) {
+                String note;
+                boolean nodesCut = nodes.size() < totalNodes;
+                boolean edgesCut = edges.size() < totalEdges;
+                if (nodesCut && edgesCut) {
+                    note = "Showing " + nodes.size() + " of " + totalNodes + " nodes and "
+                            + edges.size() + " of " + totalEdges
+                            + " relationships (large-repository limit).";
+                } else if (nodesCut) {
+                    note = "Showing " + nodes.size() + " of " + totalNodes
+                            + " nodes (large-repository limit).";
+                } else if (edgesCut) {
+                    note = "Showing " + edges.size() + " of " + totalEdges
+                            + " relationships (large-repository limit).";
+                } else {
+                    note = "Diagram reached the large-repository limit.";
+                }
+                advisory = Optional.of(note);
+            } else if (edges.isEmpty() && noEdgeAdvisory != null && !noEdgeAdvisory.isBlank()) {
+                advisory = Optional.of(noEdgeAdvisory);
+            }
+            return new NamedDiagram(
+                    type, title, graph, Optional.empty(), advisory, totalNodes, truncated);
         }
     }
 }

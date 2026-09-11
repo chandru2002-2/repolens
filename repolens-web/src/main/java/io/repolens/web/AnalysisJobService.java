@@ -9,6 +9,7 @@ import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.NamedDiagram;
 import io.repolens.core.ports.AnalysisRunner;
+import io.repolens.ingest.UserFacingErrors;
 
 import java.util.List;
 import java.util.Objects;
@@ -75,7 +76,8 @@ public final class AnalysisJobService implements AutoCloseable {
             AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph, diagrams);
             job.markCompleted(response);
         } catch (Exception ex) {
-            job.markFailed(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
+            job.markFailed(UserFacingErrors.sanitize(
+                    ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
         }
     }
 

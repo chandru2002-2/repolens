@@ -36,3 +36,22 @@ export function explorerGridClass(
   }
   return classes.join(" ");
 }
+
+export function analyzeHint(
+  phase: AppPhase,
+  status: { status: string } | null,
+): string {
+  if (phase === "running") {
+    const current = status?.status?.toUpperCase();
+    if (current && current !== "FAILED" && current !== "ERROR") {
+      return `Job ${status!.status.toLowerCase()}…`;
+    }
+    return "Analyzing…";
+  }
+  return "Local paths and public GitHub HTTPS URLs are supported.";
+}
+
+/** Clear a previous submit error when the user edits the repository input. */
+export function shouldClearSubmitError(phase: AppPhase): boolean {
+  return phase !== "running";
+}
