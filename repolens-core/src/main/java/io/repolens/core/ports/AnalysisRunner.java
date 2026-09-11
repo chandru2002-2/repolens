@@ -3,6 +3,7 @@ package io.repolens.core.ports;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.RepositoryModel;
 
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
@@ -24,13 +25,19 @@ public interface AnalysisRunner {
         }
     }
 
+    /**
+     * Completed analysis session: model + results + working tree for optional snippet packaging.
+     * Context Studio consumes this without re-running parsers.
+     */
     record AnalysisRunResult(
             RepositoryModel model,
-            List<AnalysisResult> results
+            List<AnalysisResult> results,
+            Path workingTree
     ) {
         public AnalysisRunResult {
             Objects.requireNonNull(model, "model");
             Objects.requireNonNull(results, "results");
+            Objects.requireNonNull(workingTree, "workingTree");
             results = List.copyOf(results);
         }
     }

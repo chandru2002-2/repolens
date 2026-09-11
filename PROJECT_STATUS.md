@@ -2,17 +2,22 @@
 
 **Date:** 2026-08-13
 **Phase:** Interactive Repository Intelligence
-**Version:** `1.5.0`
+**Version:** `1.6.0`
 
-## What works
+## Current capabilities
 
 - End-to-end local + public GitHub analysis path
 - CLI: `ingest`, `analyze [--json] [-o file]`, `serve`
 - Web API + packaged Web UI (Cytoscape graph explorer)
+- **Context Studio** — generate multiple AI-ready contexts (Markdown/JSON) and ready-to-copy AI prompts from analyzed `RepositoryModel` with AI task presets, purpose/scope, token budget, Try Another / New Context, and session history
 - Contributor docs: `CONTRIBUTING.md`, `docs/README.md`, `docs/architecture/REPO_LAYOUT.md`, `./scripts/package-ui.sh`
 - Diagram modes: Architecture, Package, Class, Sequence, ER, DFD, Activity, Deployment, Use Case, State Machine
 - Client-side graph filtering (kinds, relationship types, name search)
 - Deterministic structural facts for specialized diagrams (Java/Spring + config heuristics)
+- Focused structural extractors under `repolens-parse/.../structural/` (JPA, Spring, calls, activity, state, deployment, config)
+- CALLS relationships carry confidence (`high` typed receiver / static type, `medium` name heuristic); low-confidence guesses are not emitted
+- State-machine transitions require assignment/return/transition-call evidence (enum or switch order alone is not enough)
+- Deployment service links require Compose `depends_on` evidence (declaration order is not enough)
 - Deterministic README / `docs/` documentation extraction and entity matching
 - Documentation-aware Inspector excerpts
 - Repository metadata (local Git + public GitHub API; non-blocking on failure)
@@ -24,7 +29,7 @@
 - ADRs 001–011
 - Language matrix: `docs/architecture/LANGUAGE_SUPPORT.md`
 
-## What does not work yet
+## Known limitations
 
 - Private GitHub repos / non-GitHub hosts
 - Multi-arch bundled Tree-sitter natives
@@ -33,6 +38,12 @@
 - Phase B+ languages (C/C++, Swift, PHP, Ruby, …)
 - Perfect runtime sequence reconstruction (static inference only)
 - Full CFG activity diagrams for arbitrary methods
+- Specialized diagrams may be empty when the repository lacks structural signals
+- Large graphs are capped by node/edge/fact limits
+- Call resolution is heuristic (not a full Java compiler); unresolved receivers yield no CALLS edge
+- Context Studio token counts are **estimates** (approx. 4 chars/token), not exact LLM tokenizer counts
+- Context Studio history is session/UI-scoped (not persisted to a database)
+- Context Studio generates prompts locally; it does not call AI providers or execute prompts
 - Manifest ingestion, DETECTED_ONLY language status
 
 ## Open product decisions

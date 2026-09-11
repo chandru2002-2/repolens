@@ -10,7 +10,6 @@ import io.repolens.core.model.Symbol;
 import io.repolens.core.model.SymbolKind;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -20,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class DiagramProjectorTest {
 
     @Test
-    void sequenceProjectsControllerServiceRepositoryChain() {
+    void sequenceProjectsEvidenceBackedCallsNotRoleInvention() {
         RepositoryModel model = base()
                 .addSymbol(type("sym:c", "UserController", "c/UserController.java"))
                 .addSymbol(type("sym:s", "UserService", "s/UserService.java"))
@@ -35,8 +34,26 @@ class DiagramProjectorTest {
         NamedDiagram diagram = DiagramProjector.projectSequence(model);
         assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.kind().equals("actor")));
         assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.label().equals("UserController")));
-        assertTrue(diagram.graph().edges().stream().anyMatch(e -> e.type().startsWith("CALLS")));
+        assertTrue(diagram.graph().edges().stream()
+                .anyMatch(e -> e.fromNodeId().equals("node:sym:c") && e.toNodeId().equals("node:sym:s")));
+        assertFalse(diagram.graph().edges().stream()
+                .anyMatch(e -> e.id().startsWith("seq-role:")));
         assertTrue(diagram.emptyMessage().isEmpty());
+    }
+
+    @Test
+    void sequenceDoesNotInventControllerServiceEdgesFromRolesAlone() {
+        RepositoryModel model = base()
+                .addSymbol(type("sym:c", "UserController", "c/UserController.java"))
+                .addSymbol(type("sym:s", "UserService", "s/UserService.java"))
+                .addStructuralFact(fact("f1", "sequence", "controller", "UserController", "sym:c", null))
+                .addStructuralFact(fact("f2", "sequence", "service", "UserService", "sym:s", null))
+                .build();
+
+        NamedDiagram diagram = DiagramProjector.projectSequence(model);
+        assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.label().equals("UserController")));
+        assertFalse(diagram.graph().edges().stream()
+                .anyMatch(e -> e.fromNodeId().equals("node:sym:c") && e.toNodeId().equals("node:sym:s")));
     }
 
     @Test
@@ -53,6 +70,38 @@ class DiagramProjectorTest {
         NamedDiagram diagram = DiagramProjector.projectEr(model);
         assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.kind().equals("entity")));
         assertTrue(diagram.graph().edges().stream().anyMatch(e -> e.type().equals("ONE_TO_MANY")));
+        assertTrue(diagram.graph().edges().stream().anyMatch(e -> e.type().equals("CONTAINS")));
+    }
+
+    @Test
+    void dfdProjectsProcessesAndFlows() {
+        RepositoryModel model = base()
+                .addSymbol(type("sym:c", "UserController", "c/UserController.java"))
+                .addSymbol(type("sym:s", "UserService", "s/UserService.java"))
+                .addStructuralFact(new StructuralFact(
+                        "d1", "dfd", "process", "UserController",
+                        Optional.of("sym:c"), Optional.empty(), Optional.of("boundary=api"),
+                        Optional.empty(), Optional.empty()))
+                .addStructuralFact(fact("d2", "dfd", "data_flow", "UserController->UserService", "sym:c", "sym:s"))
+                .addStructuralFact(fact("d3", "dfd", "data_store", "UserRepository", "sym:s", null))
+                .build();
+
+        NamedDiagram diagram = DiagramProjector.projectDfd(model);
+        assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.kind().equals("external_entity")));
+        assertTrue(diagram.graph().edges().stream().anyMatch(e -> e.type().equals("DATA_FLOW")));
+    }
+
+    @Test
+    void activityProjectsOrderedStepsPerMethod() {
+        RepositoryModel model = base()
+                .addStructuralFact(fact("a1", "activity", "start", "Start:run", "m1", null))
+                .addStructuralFact(fact("a2", "activity", "action", "svc.find()", "m1", null))
+                .addStructuralFact(fact("a3", "activity", "end", "End:run", "m1", null))
+                .build();
+        NamedDiagram diagram = DiagramProjector.projectActivity(model);
+        assertEquals(3, diagram.graph().nodes().size());
+        assertEquals(2, diagram.graph().edges().size());
+        assertTrue(diagram.graph().edges().stream().allMatch(e -> e.type().equals("NEXT")));
     }
 
     @Test
@@ -62,10 +111,12 @@ class DiagramProjectorTest {
         assertTrue(DiagramProjector.projectSequence(model).emptyMessage().isPresent());
         assertTrue(DiagramProjector.projectDeployment(model).emptyMessage().isPresent());
         assertTrue(DiagramProjector.projectDfd(model).emptyMessage().isPresent());
+        assertTrue(DiagramProjector.projectActivity(model).emptyMessage().isPresent());
+        assertTrue(DiagramProjector.projectUseCase(model).emptyMessage().isPresent());
     }
 
     @Test
-    void deploymentProjectsComposeServices() {
+    void deploymentProjectsComposeServicesAndEvidenceLinksOnly() {
         RepositoryModel model = base()
                 .addStructuralFact(fact("d1", "deployment", "service", "api", null, null))
                 .addStructuralFact(fact("d2", "deployment", "database", "mysql", null, null))
@@ -74,6 +125,18 @@ class DiagramProjectorTest {
         NamedDiagram diagram = DiagramProjector.projectDeployment(model);
         assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.label().equals("api")));
         assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.kind().equals("database")));
+        assertTrue(diagram.graph().edges().stream().anyMatch(e -> e.type().equals("DEPENDS_ON")));
+    }
+
+    @Test
+    void deploymentDoesNotInventLinksWithoutEvidence() {
+        RepositoryModel model = base()
+                .addStructuralFact(fact("d1", "deployment", "service", "api", null, null))
+                .addStructuralFact(fact("d2", "deployment", "database", "mysql", null, null))
+                .build();
+        NamedDiagram diagram = DiagramProjector.projectDeployment(model);
+        assertFalse(diagram.graph().edges().stream()
+                .anyMatch(e -> e.type().equals("DEPENDS_ON") && !e.id().startsWith("deploy:browser")));
     }
 
     @Test
@@ -92,8 +155,21 @@ class DiagramProjectorTest {
 
         NamedDiagram useCase = DiagramProjector.projectUseCase(model);
         assertTrue(useCase.graph().nodes().stream().anyMatch(n -> n.kind().equals("use_case")));
+        assertTrue(useCase.graph().edges().stream().anyMatch(e -> e.type().equals("ASSOCIATES")));
         NamedDiagram state = DiagramProjector.projectStateMachine(model);
         assertTrue(state.graph().edges().stream().anyMatch(e -> e.type().equals("TRANSITION")));
+    }
+
+    @Test
+    void stateMachineWithoutTransitionsKeepsStatesAndExplains() {
+        RepositoryModel model = base()
+                .addStructuralFact(fact("s1", "state", "state", "PENDING", "sym:e", null))
+                .addStructuralFact(fact("s2", "state", "state", "DONE", "sym:e", null))
+                .build();
+        NamedDiagram state = DiagramProjector.projectStateMachine(model);
+        assertEquals(2, state.graph().nodes().size());
+        assertEquals(0, state.graph().edges().size());
+        assertTrue(state.emptyMessage().orElse("").contains("no transitions"));
     }
 
     @Test

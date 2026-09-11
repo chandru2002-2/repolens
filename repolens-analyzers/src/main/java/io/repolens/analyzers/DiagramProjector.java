@@ -68,6 +68,7 @@ public final class DiagramProjector {
             }
         }
 
+        boolean anyCallEdge = false;
         for (StructuralFact fact : facts) {
             if (!"call".equals(fact.kind())) {
                 continue;
@@ -81,12 +82,13 @@ public final class DiagramProjector {
             ensureSymbolNode(graph, model, fact.targetEntityId().get());
             String label = fact.detail().orElse("call");
             graph.edge("seq-call:" + fact.id(), from, to, "CALLS:" + label);
+            anyCallEdge = true;
         }
 
-        // Link controller->service->repository by role when calls missing
-        linkRoles(graph, facts, "controller", "service");
-        linkRoles(graph, facts, "service", "repository");
-        if (hasDb) {
+        // Do not invent controller→service→repository edges from roles alone.
+        // Only connect repository→Database when a database role was detected and
+        // there is at least one evidence-backed call edge in the diagram.
+        if (hasDb && anyCallEdge) {
             for (StructuralFact fact : facts) {
                 if ("repository".equals(fact.kind())) {
                     graph.edge("seq:repo-db:" + fact.id(), nodeId(fact), "node:db:database", "CALLS");
@@ -275,14 +277,7 @@ public final class DiagramProjector {
                 graph.edge("deploy-link:" + fact.id(), from, to, "DEPENDS_ON");
             }
         }
-        // Connect app services to databases/caches when both exist
-        List<String> apps = graph.nodesOfKinds(Set.of("service", "container", "application"));
-        List<String> stores = graph.nodesOfKinds(Set.of("database", "cache", "message_broker"));
-        for (String app : apps) {
-            for (String store : stores) {
-                graph.edge("deploy:" + app + "->" + store, app, store, "DEPENDS_ON");
-            }
-        }
+        // Do not invent app→store edges for every pair; only evidence-backed links above.
         return graph.toDiagram("deployment", "Deployment", "No deployment nodes were detected.");
     }
 
@@ -349,6 +344,7 @@ public final class DiagramProjector {
         for (StructuralFact fact : states) {
             graph.add("node:state:" + fact.label(), fact.label(), "state", fact.sourceEntityId());
         }
+        int transitions = 0;
         for (StructuralFact fact : facts) {
             if (!"transition".equals(fact.kind())) {
                 continue;
@@ -362,18 +358,22 @@ public final class DiagramProjector {
             graph.add(from, parts[0].trim(), "state", fact.sourceEntityId());
             graph.add(to, parts[1].trim(), "state", fact.sourceEntityId());
             graph.edge("state:" + fact.id(), from, to, "TRANSITION");
+            transitions++;
         }
-        return graph.toDiagram("state", "State Machine", "No state transitions were detected.");
-    }
-
-    private static void linkRoles(Builder graph, List<StructuralFact> facts, String fromRole, String toRole) {
-        List<StructuralFact> from = facts.stream().filter(f -> fromRole.equals(f.kind())).toList();
-        List<StructuralFact> to = facts.stream().filter(f -> toRole.equals(f.kind())).toList();
-        for (StructuralFact a : from) {
-            for (StructuralFact b : to) {
-                graph.edge("seq-role:" + a.id() + "->" + b.id(), nodeId(a), nodeId(b), "CALLS");
-            }
+        NamedDiagram diagram = graph.toDiagram("state", "State Machine", "No state transitions were detected.");
+        if (transitions == 0 && !diagram.graph().nodes().isEmpty() && diagram.emptyMessage().isEmpty()) {
+            // Re-emit with an explanatory note reused in emptyMessage field (existing API).
+            return new NamedDiagram(
+                    diagram.type(),
+                    diagram.title(),
+                    diagram.graph(),
+                    Optional.of("States detected; no transitions could be established confidently "
+                            + "(enum/switch order alone is not treated as evidence)."),
+                    diagram.totalNodeCount(),
+                    diagram.truncated()
+            );
         }
+        return diagram;
     }
 
     private static void ensureSymbolNode(Builder graph, RepositoryModel model, String symbolId) {
@@ -449,13 +449,6 @@ public final class DiagramProjector {
                 return;
             }
             edges.add(new GraphView.Edge(id, from, to, type));
-        }
-
-        List<String> nodesOfKinds(Set<String> kinds) {
-            return nodes.values().stream()
-                    .filter(n -> kinds.contains(n.kind()))
-                    .map(GraphView.Node::id)
-                    .toList();
         }
 
         String findByLabel(String label) {

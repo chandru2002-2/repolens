@@ -2,9 +2,14 @@ package io.repolens.web;
 
 import io.repolens.analyzers.DiagramProjector;
 import io.repolens.analyzers.GraphViewProjector;
+import io.repolens.analyzers.context.ContextGenerator;
+import io.repolens.analyzers.context.ContextRequest;
+import io.repolens.analyzers.context.ContextResult;
 import io.repolens.api.AnalysisJobDto;
 import io.repolens.api.AnalysisResponseDto;
 import io.repolens.api.AnalysisResponseMapper;
+import io.repolens.api.ContextRequestDto;
+import io.repolens.api.ContextResponseDto;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.NamedDiagram;
@@ -18,13 +23,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 /**
- * Orchestrates async analysis jobs over RepoLens Core.
+ * Orchestrates async analysis jobs over RepoLens Core and Context Studio packaging.
  */
 public final class AnalysisJobService implements AutoCloseable {
 
     private final AnalysisRunner analysisRunner;
     private final InMemoryJobStore store;
     private final ExecutorService executor;
+    private final ContextGenerator contextGenerator;
 
     public AnalysisJobService(AnalysisRunner analysisRunner, InMemoryJobStore store) {
         this(analysisRunner, store, Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2)));
@@ -34,6 +40,7 @@ public final class AnalysisJobService implements AutoCloseable {
         this.analysisRunner = Objects.requireNonNull(analysisRunner, "analysisRunner");
         this.store = Objects.requireNonNull(store, "store");
         this.executor = Objects.requireNonNull(executor, "executor");
+        this.contextGenerator = new ContextGenerator();
     }
 
     public AnalysisJob submit(String source, boolean remote) {
@@ -64,6 +71,25 @@ public final class AnalysisJobService implements AutoCloseable {
         );
     }
 
+    public ContextResponseDto generateContext(String jobId, ContextRequestDto requestDto) {
+        AnalysisJob job = store.find(jobId).orElseThrow(() -> new IllegalArgumentException("job not found"));
+        if (job.status() != JobStatus.COMPLETED || job.model() == null || job.workingTree() == null) {
+            throw new IllegalStateException("analysis result not ready for context generation");
+        }
+        ContextRequest request = ContextDtoMapper.toDomain(requestDto);
+        ContextResult result = contextGenerator.generate(
+                job.model(),
+                job.analysisResults() == null ? List.of() : job.analysisResults(),
+                job.workingTree(),
+                request
+        );
+        var aiTask = ContextDtoMapper.toAiTask(requestDto);
+        if (aiTask == null) {
+            return ContextDtoMapper.toDto(result);
+        }
+        return ContextDtoMapper.toDto(result, ContextDtoMapper.buildPrompt(aiTask, result));
+    }
+
     private void runJob(AnalysisJob job) {
         job.markRunning();
         try {
@@ -73,7 +99,7 @@ public final class AnalysisJobService implements AutoCloseable {
             GraphView graph = GraphViewProjector.project(run.model(), results);
             List<NamedDiagram> diagrams = DiagramProjector.projectAll(run.model());
             AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph, diagrams);
-            job.markCompleted(response);
+            job.markCompleted(response, run.model(), results, run.workingTree());
         } catch (Exception ex) {
             job.markFailed(ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
         }

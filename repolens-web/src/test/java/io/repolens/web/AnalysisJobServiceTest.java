@@ -26,7 +26,7 @@ class AnalysisJobServiceTest {
                     .addFile(new SourceFile("A.java", "java", "h", 1))
                     .build();
             AnalysisResult result = new AnalysisResult("metrics", "ok", List.of(), List.of(), List.of());
-            return new AnalysisRunner.AnalysisRunResult(model, List.of(result));
+            return new AnalysisRunner.AnalysisRunResult(model, List.of(result), java.nio.file.Path.of(request.source()));
         };
 
         try (AnalysisJobService service = new AnalysisJobService(runner, new InMemoryJobStore())) {

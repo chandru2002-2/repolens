@@ -1295,3 +1295,173 @@ input {
     order: 2;
   }
 }
+
+.context-studio-launch {
+  margin-left: auto;
+}
+
+.context-studio {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  top: 4.5rem;
+  width: min(520px, calc(100vw - 2rem));
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid var(--line-strong);
+  background: var(--panel);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+  overflow: auto;
+}
+
+.context-studio-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.context-studio-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.context-sub {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.context-form,
+.context-result {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.context-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.context-form select,
+.context-form input,
+.context-form textarea,
+.context-close,
+.context-actions button,
+.context-history-item {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 0.4rem 0.55rem;
+}
+
+.context-form textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+  font: inherit;
+}
+
+.context-form button.primary,
+.context-actions .primary {
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  border-color: var(--btn-bg);
+}
+
+.context-meta {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.context-result-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: flex-start;
+}
+
+.context-result-head h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1rem;
+}
+
+.context-tokens {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.context-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.context-lists {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.context-lists h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.context-lists ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.context-preview {
+  margin: 0;
+  max-height: 40vh;
+  overflow: auto;
+  padding: 0.75rem;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+}
+
+.context-history h3 {
+  margin: 0.5rem 0 0.35rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.context-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.context-history-item {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.context-history-item:hover {
+  border-color: var(--line-strong);
+}

@@ -17,6 +17,7 @@ import io.repolens.parse.engine.SyntaxCapture;
 import io.repolens.parse.engine.SyntaxQueryEngine;
 import io.repolens.parse.profile.LanguageProfile;
 import io.repolens.parse.profile.LanguageProfiles;
+import io.repolens.parse.structural.StructuralFactExtractor;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

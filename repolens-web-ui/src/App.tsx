@@ -16,6 +16,7 @@ import {
   showsCreationForm,
   type AppPhase,
 } from "./appNav";
+import { ContextStudio } from "./ContextStudio";
 import { DetailsPanel } from "./DetailsPanel";
 import { ExplorerPanel } from "./ExplorerPanel";
 import { GraphFilters } from "./GraphFilters";
@@ -183,6 +184,7 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [explorerCollapsed, setExplorerCollapsed] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement | null>(null);
   const [searchMenuStyle, setSearchMenuStyle] = useState<CSSProperties>({});
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
@@ -527,6 +529,15 @@ export default function App() {
                     ))}
                   </select>
                 </label>
+                {status?.id ? (
+                  <button
+                    type="button"
+                    className="view-tab context-studio-launch"
+                    onClick={() => setContextOpen(true)}
+                  >
+                    Context Studio
+                  </button>
+                ) : null}
               </div>
               <GraphFilters view={view} filters={filters} onChange={setFilters} />
               {diagramEmptyMessage ? (
@@ -570,6 +581,16 @@ export default function App() {
               onToggleCollapsed={() => setInspectorCollapsed((value) => !value)}
             />
           </main>
+
+          {status?.id && result ? (
+            <ContextStudio
+              jobId={status.id}
+              result={result}
+              selection={selection}
+              open={contextOpen}
+              onClose={() => setContextOpen(false)}
+            />
+          ) : null}
 
           <div className="status-bar" aria-label="Analysis status">
             <span>

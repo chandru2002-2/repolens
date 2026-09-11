@@ -40,7 +40,8 @@ class RepoLensServerTest {
                     .build();
             return new AnalysisRunner.AnalysisRunResult(
                     model,
-                    List.of(new AnalysisResult("structure", "ok", List.of(), List.of(), List.of()))
+                    List.of(new AnalysisResult("structure", "ok", List.of(), List.of(), List.of())),
+                    tempDir
             );
         };
 

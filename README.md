@@ -83,15 +83,37 @@ Layout details: [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT
 - **Architecture** — repository and package/module layout with package dependencies
 - **Package** — package-to-package dependency diagram
 - **Class** — classes/interfaces with inheritance (`extends`) / implementation (`implements`) when present
-- **Sequence** — inferred controller → service → repository interaction chains (static)
-- **ER** — JPA `@Entity` models and association cardinality when annotated
+- **Sequence** — inferred controller / service / repository roles plus evidence-backed CALLS (static; confidence-tagged)
+- **ER** — JPA `@Entity` models and association cardinality when annotated (`mappedBy` / `@JoinColumn` captured in detail when present)
 - **DFD** — data-flow sketch from API processes, services, and data stores
-- **Activity** — simplified per-method activity summary (calls / decisions / end)
-- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints
-- **Use Case** — user-facing operations inferred from REST mappings / controllers
-- **State Machine** — enum/status states and only confidently observed transitions
+- **Activity** — simplified per-method activity summary (calls / decisions / end); not a full CFG
+- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints; Compose links only from `depends_on`
+- **Use Case** — user-facing operations inferred from REST mappings / controllers (class + method path combine when present)
+- **State Machine** — enum/status states; transitions only from assignment/return/transition-call evidence (not enum or switch order)
 
 Core views (Architecture / Package / Class) filter the primary graph. Specialized diagrams are separate projections from deterministic structural facts. Empty diagrams show an explanatory message instead of inventing relationships. Large graphs are capped (node/edge limits) with a truncation notice.
+
+CALLS confidence (static analysis):
+
+- **high** — field / constructor / setter-typed receiver, or static `Type.method`
+- **medium** — capitalized receiver name matches a known type
+- Relationships below the emit threshold are omitted rather than guessed
+
+## Context Studio (v1.6)
+
+Generate **AI-ready repository context** and a **ready-to-copy AI prompt** from existing RepoLens analysis — deterministic packaging, not an LLM discovering architecture.
+
+- AI task presets (architecture, auth/security, selected symbol, API trace, JPA, dependencies, debug, architecture risks, onboarding, documentation) plus free-text custom task
+- Scope / purposes: Full Repository, Architecture, Selected Files/Symbols, API/Backend, Database/JPA, Security, Custom
+- Token budgets: 2K / 4K / 8K / 16K / 32K or custom (validated); counts are **estimated** (~4 chars/token)
+- Formats: Markdown (primary) and JSON for the raw context package
+- **Generate Context** packages repository information; **Generate AI Prompt** wraps that context with task + instructions (no provider call)
+- **Copy Prompt** / **Download** for use with ChatGPT / Claude / Cursor / other tools
+- **Try Another** keeps task + scope and regenerates with adjusted options; **New Context** starts a fresh configuration
+- Session history of generated contexts in the UI (not a database)
+- API: `POST /v1/jobs/{id}/context` on a completed analysis job — reuses `RepositoryModel`, does not re-parse; optional `aiTask` / `customTask` return `prompt` alongside `content`
+
+Open **Context Studio** from the exploring workspace after analysis completes.
 
 Graph filtering (client-side only — no re-analysis):
 

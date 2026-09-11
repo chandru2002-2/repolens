@@ -223,3 +223,88 @@ export async function waitForResult(
     await new Promise((resolve) => setTimeout(resolve, 400));
   }
 }
+
+export type ContextPurpose =
+  | "FULL_REPOSITORY"
+  | "ARCHITECTURE"
+  | "SELECTED_FILES"
+  | "SELECTED_SYMBOLS"
+  | "API_BACKEND"
+  | "DATABASE_JPA"
+  | "SECURITY"
+  | "CUSTOM";
+
+export type AiTaskPreset =
+  | "EXPLAIN_ARCHITECTURE"
+  | "EXPLAIN_AUTHENTICATION_SECURITY"
+  | "EXPLAIN_SELECTED_CLASS_SYMBOL"
+  | "TRACE_API_REQUEST"
+  | "EXPLAIN_DATABASE_JPA"
+  | "EXPLAIN_DEPENDENCIES"
+  | "HELP_DEBUG_SELECTED_CODE"
+  | "IDENTIFY_ARCHITECTURAL_PROBLEMS"
+  | "GENERATE_ONBOARDING_GUIDANCE"
+  | "GENERATE_DOCUMENTATION"
+  | "CUSTOM";
+
+export type ContextStrategy =
+  | "ARCHITECTURE_OVERVIEW"
+  | "SOURCE_AND_SYMBOLS"
+  | "COMPACT_ARCHITECTURE"
+  | "ALTERNATE_PRIORITIZATION";
+
+export type ContextRequestBody = {
+  purpose: ContextPurpose;
+  scope: {
+    mode: string;
+    filePaths: string[];
+    symbolIds: string[];
+    graphNodeIds: string[];
+  };
+  tokenBudget: number;
+  format: "markdown" | "json";
+  title?: string;
+  aiTask?: AiTaskPreset;
+  customTask?: string;
+  strategy?: ContextStrategy;
+};
+
+export type ContextResponse = {
+  id: string;
+  title: string;
+  purpose: string;
+  scopeMode: string;
+  format: string;
+  tokenBudget: number;
+  estimatedTokens: number;
+  tokenEstimateApproximate: boolean;
+  content: string;
+  included: string[];
+  excluded: string[];
+  scope: {
+    filePaths: string[];
+    symbolIds: string[];
+    graphNodeIds: string[];
+  };
+  aiTask?: string | null;
+  taskText?: string | null;
+  prompt?: string | null;
+  strategy?: string | null;
+  strategyLabel?: string | null;
+};
+
+export async function generateContext(
+  jobId: string,
+  body: ContextRequestBody,
+): Promise<ContextResponse> {
+  const response = await fetch(`/v1/jobs/${jobId}/context`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  const payload = await response.json();
+  if (!response.ok) {
+    throw new Error(payload.error ?? "Failed to generate context");
+  }
+  return payload as ContextResponse;
+}
