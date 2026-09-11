@@ -14,9 +14,10 @@ import {
   phaseForNewLens,
   showNewLensControl,
   showsCreationForm,
+  analyzeHint,
+  shouldClearSubmitError,
   type AppPhase,
 } from "./appNav";
-import { ContextStudio } from "./ContextStudio";
 import { DetailsPanel } from "./DetailsPanel";
 import { ExplorerPanel } from "./ExplorerPanel";
 import { GraphFilters } from "./GraphFilters";
@@ -159,11 +160,7 @@ function AnalyzeForm({
           {phase === "running" ? "Analyzing…" : "Analyze"}
         </button>
       </div>
-      <p className="hint">
-        {phase === "running" && status
-          ? `Job ${status.status.toLowerCase()}…`
-          : "Local paths and public GitHub HTTPS URLs are supported."}
-      </p>
+      <p className="hint">{analyzeHint(phase, status)}</p>
       {error ? <p className="error">{error}</p> : null}
     </form>
   );
@@ -184,7 +181,6 @@ export default function App() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
   const [explorerCollapsed, setExplorerCollapsed] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
   const searchBoxRef = useRef<HTMLDivElement | null>(null);
   const [searchMenuStyle, setSearchMenuStyle] = useState<CSSProperties>({});
   const [themePreference, setThemePreference] = useState<ThemePreference>(() =>
@@ -288,6 +284,7 @@ export default function App() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
+    setStatus(null);
     setResult(null);
     setSelection(null);
     setFocusId(null);
@@ -335,14 +332,15 @@ export default function App() {
     ? (result?.graph.edges ?? [])
     : (activeDiagram?.graph.edges ?? []);
   const diagramEmptyMessage =
-    !isCoreDiagram(view) && activeDiagram?.emptyMessage
-      ? activeDiagram.emptyMessage
-      : !isCoreDiagram(view) && graphNodes.length === 0
-        ? "No diagram data available for this view."
-        : null;
-  const diagramTruncation =
-    activeDiagram?.truncated && activeDiagram.totalNodeCount
-      ? `Showing ${activeDiagram.graph.nodes.length} of ${activeDiagram.totalNodeCount} nodes`
+    !isCoreDiagram(view) && graphNodes.length === 0
+      ? activeDiagram?.emptyMessage || "No diagram data available for this view."
+      : null;
+  const diagramAdvisory =
+    !isCoreDiagram(view) && graphNodes.length > 0
+      ? activeDiagram?.advisoryMessage ||
+        (activeDiagram?.truncated && activeDiagram.totalNodeCount
+          ? `Showing ${activeDiagram.graph.nodes.length} of ${activeDiagram.totalNodeCount} nodes`
+          : null)
       : null;
 
   const statusLabel =
@@ -442,7 +440,12 @@ export default function App() {
 
             <AnalyzeForm
               source={source}
-              onSourceChange={setSource}
+              onSourceChange={(value) => {
+                setSource(value);
+                if (shouldClearSubmitError(phase)) {
+                  setError(null);
+                }
+              }}
               onSubmit={onSubmit}
               phase={phase}
               status={status}
@@ -461,7 +464,12 @@ export default function App() {
             <hr className="rule" />
             <AnalyzeForm
               source={source}
-              onSourceChange={setSource}
+              onSourceChange={(value) => {
+                setSource(value);
+                if (shouldClearSubmitError(phase)) {
+                  setError(null);
+                }
+              }}
               onSubmit={onSubmit}
               phase={phase}
               status={status}
@@ -529,15 +537,6 @@ export default function App() {
                     ))}
                   </select>
                 </label>
-                {status?.id ? (
-                  <button
-                    type="button"
-                    className="view-tab context-studio-launch"
-                    onClick={() => setContextOpen(true)}
-                  >
-                    Context Studio
-                  </button>
-                ) : null}
               </div>
               <GraphFilters view={view} filters={filters} onChange={setFilters} />
               {diagramEmptyMessage ? (
@@ -545,22 +544,24 @@ export default function App() {
                   {diagramEmptyMessage}
                 </p>
               ) : (
-                <RepositoryGraph
-                  nodes={graphNodes}
-                  edges={graphEdges}
-                  view={view}
-                  filters={filters}
-                  selection={selection}
-                  focusId={focusId}
-                  onSelect={setSelection}
-                  theme={resolvedTheme}
-                />
+                <>
+                  {diagramAdvisory ? (
+                    <p className="diagram-truncate" role="status">
+                      {diagramAdvisory}
+                    </p>
+                  ) : null}
+                  <RepositoryGraph
+                    nodes={graphNodes}
+                    edges={graphEdges}
+                    view={view}
+                    filters={filters}
+                    selection={selection}
+                    focusId={focusId}
+                    onSelect={setSelection}
+                    theme={resolvedTheme}
+                  />
+                </>
               )}
-              {diagramTruncation ? (
-                <p className="diagram-truncate" role="status">
-                  {diagramTruncation}
-                </p>
-              ) : null}
             </section>
 
             <DetailsPanel
@@ -581,16 +582,6 @@ export default function App() {
               onToggleCollapsed={() => setInspectorCollapsed((value) => !value)}
             />
           </main>
-
-          {status?.id && result ? (
-            <ContextStudio
-              jobId={status.id}
-              result={result}
-              selection={selection}
-              open={contextOpen}
-              onClose={() => setContextOpen(false)}
-            />
-          ) : null}
 
           <div className="status-bar" aria-label="Analysis status">
             <span>

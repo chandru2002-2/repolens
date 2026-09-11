@@ -14,11 +14,11 @@
 
 ## Next
 
-1. **Context Studio polish** — richer multi-select scope, optional Mermaid/PNG export (separate), confidence visible in UI (AI prompt packaging shipped: local prompt generation, no provider)
-2. **UI polish** — richer node details, filters, export
-3. **Multi-arch Tree-sitter natives** — avoid structural fallback on Apple Silicon
-4. **Optional AI explanations** — behind feature flag, consuming structured results / Context Studio output
-5. **Persistent job/cache store** (optional SQLite) including context history
+1. **UI polish** — richer node details, filters, export
+2. **Multi-arch Tree-sitter natives** — avoid structural fallback on Apple Silicon
+3. **Optional AI explanations** — behind feature flag, consuming structured analysis results
+4. **Persistent job/cache store** (optional SQLite)
+5. **Remote clone freshness** — fetch/pull or TTL for `~/.repolens/cache/remotes` (v1.6 reuses `.git` without updating; not a release blocker)
 
 ## Non-goals (near term)
 

@@ -220,7 +220,7 @@ public final class RepoLensCli {
         RepoLensServer server = RepoLensServer.createDefault(port);
         server.start();
         System.out.println("RepoLens Web API listening on http://localhost:" + port);
-        System.out.println("Endpoints: GET /health, POST /v1/analyze, GET /v1/jobs/{id}, GET /v1/jobs/{id}/result, POST /v1/jobs/{id}/context");
+        System.out.println("Endpoints: GET /health, POST /v1/analyze, GET /v1/jobs/{id}, GET /v1/jobs/{id}/result");
         Runtime.getRuntime().addShutdownHook(new Thread(server::stop));
         try {
             Thread.currentThread().join();

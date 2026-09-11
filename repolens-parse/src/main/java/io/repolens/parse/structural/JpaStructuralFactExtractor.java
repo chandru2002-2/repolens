@@ -2,7 +2,9 @@ package io.repolens.parse.structural;
 
 import io.repolens.core.model.Symbol;
 
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -16,8 +18,12 @@ public final class JpaStructuralFactExtractor {
     private static final Pattern ID_FIELD = Pattern.compile(
             "@Id\\b[\\s\\S]{0,120}?(?:private|protected|public)\\s+[\\w.<>,\\[\\]\\s]+\\s+(\\w+)\\s*[;=]",
             Pattern.MULTILINE);
+    private static final Set<String> COLLECTION_TYPES = Set.of(
+            "List", "Set", "Collection", "Map", "Optional", "Iterable", "Queue", "Deque"
+    );
     private static final Pattern REL_BLOCK = Pattern.compile(
-            "@(OneToMany|ManyToOne|OneToOne|ManyToMany)\\b([\\s\\S]{0,280}?)(?:private|protected|public)\\s+"
+            "@(OneToMany|ManyToOne|OneToOne|ManyToMany)\\b([\\s\\S]{0,400}?)(?:private|protected|public)\\s+"
+                    + "(?:static\\s+)?(?:final\\s+)?"
                     + "([\\w.]+(?:\\s*<\\s*[^>]+>)?)\\s+(\\w+)\\s*[;=]",
             Pattern.MULTILINE);
     private static final Pattern MAPPED_BY = Pattern.compile("mappedBy\\s*=\\s*\"([^\"]+)\"");
@@ -46,8 +52,12 @@ public final class JpaStructuralFactExtractor {
             String annotation = rel.group(1);
             String attrs = rel.group(2) == null ? "" : rel.group(2);
             String rawType = rel.group(3);
+            String fieldName = rel.group(4);
             String targetName = elementType(rawType);
-            if (targetName == null || targetName.isBlank()) {
+            if (isCollectionType(targetName)) {
+                targetName = inferEntityFromFieldName(fieldName, sink);
+            }
+            if (targetName == null || targetName.isBlank() || isCollectionType(targetName)) {
                 continue;
             }
             Symbol target = sink.typeByName().get(targetName);
@@ -86,6 +96,45 @@ public final class JpaStructuralFactExtractor {
             cleaned = cleaned.substring(dot + 1);
         }
         return cleaned;
+    }
+
+    private static boolean isCollectionType(String typeName) {
+        if (typeName == null || typeName.isBlank()) {
+            return false;
+        }
+        String simple = typeName;
+        int dot = simple.lastIndexOf('.');
+        if (dot >= 0) {
+            simple = simple.substring(dot + 1);
+        }
+        return COLLECTION_TYPES.contains(simple);
+    }
+
+    /**
+     * When {@code List pets} has no generic argument, use the field name only if a
+     * matching {@code @Entity} type already exists (pets → Pet).
+     */
+    private static String inferEntityFromFieldName(String fieldName, StructuralFactSink sink) {
+        if (fieldName == null || fieldName.isBlank()) {
+            return null;
+        }
+        String stem = fieldName;
+        if (stem.endsWith("ies") && stem.length() > 3) {
+            stem = stem.substring(0, stem.length() - 3) + "y";
+        } else if (stem.endsWith("ses") && stem.length() > 3) {
+            stem = stem.substring(0, stem.length() - 2);
+        } else if (stem.endsWith("s") && stem.length() > 1 && !stem.endsWith("ss")) {
+            stem = stem.substring(0, stem.length() - 1);
+        }
+        String candidate = Character.toUpperCase(stem.charAt(0)) + stem.substring(1);
+        if (sink.typeByName().containsKey(candidate)) {
+            return candidate;
+        }
+        String upper = fieldName.substring(0, 1).toUpperCase(Locale.ROOT) + fieldName.substring(1);
+        if (sink.typeByName().containsKey(upper)) {
+            return upper;
+        }
+        return null;
     }
 
     private static String toCardinality(String annotation) {

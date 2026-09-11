@@ -55,7 +55,8 @@ public final class GraphViewProjector {
             ));
         }
 
-        for (Symbol symbol : selectedSymbols(model)) {
+        List<Symbol> selected = selectedSymbols(model);
+        for (Symbol symbol : selected) {
             String symbolNodeId = "node:" + symbol.id();
             addNode(
                     nodes,
@@ -65,6 +66,10 @@ public final class GraphViewProjector {
                     symbol.kind().name().toLowerCase(Locale.ROOT),
                     symbol.id()
             );
+        }
+
+        for (Symbol symbol : selected) {
+            String symbolNodeId = "node:" + symbol.id();
             if (symbol.parentSymbolId().isPresent()) {
                 String parentNode = "node:" + symbol.parentSymbolId().get();
                 if (nodeIds.contains(parentNode)) {

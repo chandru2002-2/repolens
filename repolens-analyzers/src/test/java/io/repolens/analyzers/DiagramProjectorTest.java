@@ -39,6 +39,7 @@ class DiagramProjectorTest {
         assertFalse(diagram.graph().edges().stream()
                 .anyMatch(e -> e.id().startsWith("seq-role:")));
         assertTrue(diagram.emptyMessage().isEmpty());
+        assertTrue(diagram.advisoryMessage().isEmpty());
     }
 
     @Test
@@ -169,7 +170,60 @@ class DiagramProjectorTest {
         NamedDiagram state = DiagramProjector.projectStateMachine(model);
         assertEquals(2, state.graph().nodes().size());
         assertEquals(0, state.graph().edges().size());
-        assertTrue(state.emptyMessage().orElse("").contains("no transitions"));
+        assertTrue(state.emptyMessage().isEmpty());
+        assertTrue(state.advisoryMessage().orElse("").contains("no transitions"));
+    }
+
+    @Test
+    void nonEmptyTruncatedDiagramKeepsGraphAndUsesAdvisory() {
+        RepositoryModel.Builder builder = base();
+        for (int i = 0; i < DiagramProjector.MAX_NODES + 20; i++) {
+            builder.addStructuralFact(fact("n" + i, "deployment", "service", "svc" + i, null, null));
+        }
+        NamedDiagram diagram = DiagramProjector.projectDeployment(builder.build());
+        assertFalse(diagram.graph().nodes().isEmpty());
+        assertTrue(diagram.truncated());
+        assertTrue(diagram.emptyMessage().isEmpty());
+        assertTrue(diagram.advisoryMessage().orElse("").contains("Showing"));
+        assertTrue(diagram.totalNodeCount() > DiagramProjector.MAX_NODES);
+    }
+
+    @Test
+    void emptyDiagramKeepsEmptyMessageWithoutNodes() {
+        NamedDiagram empty = DiagramProjector.projectEr(base().build());
+        assertTrue(empty.graph().nodes().isEmpty());
+        assertTrue(empty.emptyMessage().isPresent());
+        assertTrue(empty.advisoryMessage().isEmpty());
+        assertFalse(empty.truncated());
+    }
+
+    @Test
+    void nonJavaRepositoriesDoNotUseJpaEntityEmptyCopy() {
+        RepositoryModel model = RepositoryModel.builder(
+                        io.repolens.core.model.Repository.local("r1", "flask", "/tmp/flask"))
+                .addFile(new SourceFile("flask/app.py", "python", "h", 10))
+                .build();
+        NamedDiagram er = DiagramProjector.projectEr(model);
+        assertTrue(er.emptyMessage().orElse("").contains("supported persistence"));
+        assertFalse(er.emptyMessage().orElse("").contains("@Entity"));
+    }
+
+    @Test
+    void sequenceOmitsTestClassesByDefault() {
+        RepositoryModel model = base()
+                .addFile(new SourceFile("OwnerController.java", "java", "h", 10))
+                .addFile(new SourceFile("OwnerControllerTests.java", "java", "h", 10))
+                .addSymbol(type("sym:c", "OwnerController", "OwnerController.java"))
+                .addSymbol(type("sym:t", "OwnerControllerTests", "OwnerControllerTests.java"))
+                .addStructuralFact(fact("f1", "sequence", "controller", "OwnerController", "sym:c", null))
+                .addStructuralFact(fact("f2", "sequence", "controller", "OwnerControllerTests", "sym:t", null))
+                .addStructuralFact(fact("f3", "sequence", "call", "test->c", "sym:t", "sym:c"))
+                .build();
+        NamedDiagram diagram = DiagramProjector.projectSequence(model);
+        assertTrue(diagram.graph().nodes().stream().anyMatch(n -> n.label().equals("OwnerController")));
+        assertTrue(diagram.graph().nodes().stream().noneMatch(n -> n.label().equals("OwnerControllerTests")));
+        assertTrue(diagram.graph().edges().stream()
+                .noneMatch(e -> e.fromNodeId().equals("node:sym:t") || e.toNodeId().equals("node:sym:t")));
     }
 
     @Test
@@ -182,6 +236,37 @@ class DiagramProjectorTest {
         assertTrue(diagram.truncated());
         assertEquals(DiagramProjector.MAX_NODES, diagram.graph().nodes().size());
         assertTrue(diagram.totalNodeCount() > DiagramProjector.MAX_NODES);
+        assertTrue(diagram.emptyMessage().isEmpty());
+    }
+
+    @Test
+    void edgeCapKeepsGraphAndAdvisesRelationshipsNotEmpty() {
+        RepositoryModel.Builder builder = base()
+                .addSymbol(type("sym:a", "Alpha", "c/UserController.java"))
+                .addSymbol(type("sym:b", "Beta", "s/UserService.java"))
+                .addStructuralFact(fact("fa", "sequence", "controller", "Alpha", "sym:a", null))
+                .addStructuralFact(fact("fb", "sequence", "service", "Beta", "sym:b", null));
+        for (int i = 0; i < DiagramProjector.MAX_EDGES + 15; i++) {
+            builder.addStructuralFact(new io.repolens.core.model.StructuralFact(
+                    "c" + i,
+                    "sequence",
+                    "call",
+                    "Alpha.m" + i + "->Beta",
+                    Optional.of("sym:a"),
+                    Optional.of("sym:b"),
+                    Optional.of("m" + i),
+                    Optional.empty(),
+                    Optional.empty()
+            ));
+        }
+        NamedDiagram diagram = DiagramProjector.projectSequence(builder.build());
+        assertFalse(diagram.graph().nodes().isEmpty());
+        assertEquals(DiagramProjector.MAX_EDGES, diagram.graph().edges().size());
+        assertTrue(diagram.truncated());
+        assertTrue(diagram.emptyMessage().isEmpty());
+        assertTrue(diagram.advisoryMessage().orElse("").contains("relationships"));
+        assertFalse(diagram.advisoryMessage().orElse("").contains(
+                "Showing " + diagram.graph().nodes().size() + " of " + diagram.graph().nodes().size() + " nodes"));
     }
 
     private static RepositoryModel.Builder base() {

@@ -7,8 +7,6 @@ import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson;
 import io.repolens.api.AnalysisJobDto;
 import io.repolens.api.AnalysisResponseDto;
-import io.repolens.api.ContextRequestDto;
-import io.repolens.api.ContextResponseDto;
 
 import java.io.InputStream;
 import java.util.Map;
@@ -137,27 +135,6 @@ public final class RepoLensServer implements AutoCloseable {
             }
             AnalysisResponseDto result = job.result();
             ctx.json(result.graph());
-        });
-
-        app.post("/v1/jobs/{id}/context", ctx -> {
-            String id = ctx.pathParam("id");
-            if (jobService.find(id).isEmpty()) {
-                ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "job not found"));
-                return;
-            }
-            try {
-                ContextRequestDto body = ctx.bodyAsClass(ContextRequestDto.class);
-                if (body == null || body.purpose() == null || body.purpose().isBlank()) {
-                    ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "purpose is required"));
-                    return;
-                }
-                ContextResponseDto response = jobService.generateContext(id, body);
-                ctx.json(response);
-            } catch (IllegalArgumentException ex) {
-                ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", ex.getMessage()));
-            } catch (IllegalStateException ex) {
-                ctx.status(HttpStatus.CONFLICT).json(Map.of("error", ex.getMessage()));
-            }
         });
 
         app.error(404, ctx -> {

@@ -51,6 +51,42 @@ class CoreAnalyzersTest {
     }
 
     @Test
+    void nestedClassContainsEdgeUsesEnclosingTypeNotModule() {
+        RepositoryModel model = RepositoryModel.builder(Repository.local("r1", "nested", "/tmp/nested"))
+                .addFile(new SourceFile("demo/PetControllerTests.java", "java", "h1", 10))
+                .addModule(Module.of("module:demo", "demo", "java"))
+                .addSymbol(new Symbol(
+                        "sym:outer",
+                        "PetControllerTests",
+                        SymbolKind.CLASS,
+                        Optional.empty(),
+                        Optional.of("module:demo"),
+                        SourceLocation.ofFile("demo/PetControllerTests.java"),
+                        Optional.empty()
+                ))
+                .addSymbol(new Symbol(
+                        "sym:inner",
+                        "ProcessCreationFormHasErrors",
+                        SymbolKind.CLASS,
+                        Optional.of("sym:outer"),
+                        Optional.of("module:demo"),
+                        SourceLocation.ofFile("demo/PetControllerTests.java"),
+                        Optional.empty()
+                ))
+                .build();
+
+        GraphView graph = GraphViewProjector.project(model, List.of());
+        assertTrue(graph.edges().stream().anyMatch(e ->
+                e.type().equals("CONTAINS")
+                        && e.fromNodeId().equals("node:sym:outer")
+                        && e.toNodeId().equals("node:sym:inner")));
+        assertFalse(graph.edges().stream().anyMatch(e ->
+                e.type().equals("CONTAINS")
+                        && e.fromNodeId().equals("node:module:demo")
+                        && e.toNodeId().equals("node:sym:inner")));
+    }
+
+    @Test
     void defaultAnalyzersAreWired() {
         assertEquals(4, AnalyzersModule.defaultAnalyzers().size());
     }

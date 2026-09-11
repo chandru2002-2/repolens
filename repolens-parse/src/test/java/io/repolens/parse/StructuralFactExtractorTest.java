@@ -229,6 +229,99 @@ class StructuralFactExtractorTest {
     }
 
     @Test
+    void jpaOneToManyJoinColumnAndRawListResolveWhenEntityExists() throws Exception {
+        Files.writeString(tempDir.resolve("Owner.java"), """
+                package demo;
+                import jakarta.persistence.*;
+                @Entity
+                public class Owner {
+                  @Id private Long id;
+                  @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+                  @JoinColumn(name = "owner_id")
+                  @OrderBy("name")
+                  private final java.util.List<Pet> pets = new java.util.ArrayList<>();
+                }
+                """);
+        Files.writeString(tempDir.resolve("Pet.java"), """
+                package demo;
+                import jakarta.persistence.*;
+                @Entity
+                public class Pet {
+                  @Id private Long id;
+                  @ManyToOne
+                  @JoinColumn(name = "type_id")
+                  private PetType type;
+                }
+                """);
+        Files.writeString(tempDir.resolve("PetType.java"), """
+                package demo;
+                import jakarta.persistence.*;
+                @Entity
+                public class PetType {
+                  @Id private Long id;
+                }
+                """);
+        Files.writeString(tempDir.resolve("Visit.java"), """
+                package demo;
+                import jakarta.persistence.*;
+                @Entity
+                public class Visit {
+                  @Id private Long id;
+                  @OneToMany
+                  @JoinColumn(name = "pet_id")
+                  private java.util.List visits;
+                }
+                """);
+        RepositoryModel typed = analyze("Owner.java", "Pet.java", "PetType.java");
+        assertTrue(typed.structuralFacts("er").stream()
+                .anyMatch(f -> f.kind().equals("one_to_many")
+                        && f.label().equals("Owner->Pet")
+                        && f.detail().orElse("").contains("joinColumn=owner_id")),
+                () -> "er facts=" + typed.structuralFacts("er"));
+        assertTrue(typed.structuralFacts("er").stream()
+                .anyMatch(f -> f.kind().equals("many_to_one") && f.label().equals("Pet->PetType")));
+
+        Files.writeString(tempDir.resolve("Herd.java"), """
+                package demo;
+                import jakarta.persistence.*;
+                @Entity
+                public class Herd {
+                  @Id private Long id;
+                  @OneToMany
+                  @JoinColumn(name = "herd_id")
+                  private java.util.List pets;
+                }
+                """);
+        RepositoryModel raw = analyze("Herd.java", "Pet.java");
+        assertTrue(raw.structuralFacts("er").stream()
+                .anyMatch(f -> f.kind().equals("one_to_many") && f.label().equals("Herd->Pet")),
+                () -> "er facts=" + raw.structuralFacts("er"));
+    }
+
+    @Test
+    void useCaseLabelPreservesMappingPath() throws Exception {
+        Files.writeString(tempDir.resolve("OwnerController.java"), """
+                package demo;
+                import org.springframework.web.bind.annotation.*;
+                @Controller
+                @RequestMapping("/owners")
+                public class OwnerController {
+                  @GetMapping("/new")
+                  public String initCreationForm() { return "ok"; }
+                  @GetMapping("/{ownerId}")
+                  public String showOwner() { return "ok"; }
+                }
+                """);
+        RepositoryModel model = analyze("OwnerController.java");
+        assertTrue(model.structuralFacts("usecase").stream()
+                .anyMatch(f -> f.kind().equals("use_case") && f.label().equals("/owners/new")));
+        assertTrue(model.structuralFacts("usecase").stream()
+                .anyMatch(f -> f.kind().equals("use_case") && f.label().equals("/owners/{ownerId}")));
+        assertTrue(model.structuralFacts("usecase").stream()
+                .noneMatch(f -> f.kind().equals("use_case") && f.label().equals("New")));
+    }
+
+    @Test
     void springCombinesClassAndMethodMappings() throws Exception {
         Files.writeString(tempDir.resolve("UserController.java"), """
                 package demo;

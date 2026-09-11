@@ -82,7 +82,7 @@ function graphStyles(palette: GraphPalette): StylesheetStyle[] {
         "text-halign": "center",
         "text-wrap": "wrap",
         "text-max-width": 108,
-        "min-zoomed-font-size": 7,
+        "min-zoomed-font-size": 0,
         "background-color": palette.panel,
         "border-width": 1.25,
         "border-color": palette.ink,
@@ -426,7 +426,13 @@ function RepositoryGraphComponent({
         filtered.nodes.length >= 80 ? "large" : "normal";
     }
 
-    cy.layout(layoutOptions(view, filtered.nodes.length)).run();
+    const layout = cy.layout({
+      ...layoutOptions(view, filtered.nodes.length),
+      stop: () => {
+        cy.fit(undefined, 48);
+      },
+    });
+    layout.run();
   }, [filtered, view]);
 
   useEffect(() => {

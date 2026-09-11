@@ -26,8 +26,7 @@ public interface AnalysisRunner {
     }
 
     /**
-     * Completed analysis session: model + results + working tree for optional snippet packaging.
-     * Context Studio consumes this without re-running parsers.
+     * Completed analysis session: model + results + working tree used during ingest/parse.
      */
     record AnalysisRunResult(
             RepositoryModel model,

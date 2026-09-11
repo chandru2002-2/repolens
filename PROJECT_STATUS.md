@@ -9,7 +9,6 @@
 - End-to-end local + public GitHub analysis path
 - CLI: `ingest`, `analyze [--json] [-o file]`, `serve`
 - Web API + packaged Web UI (Cytoscape graph explorer)
-- **Context Studio** — generate multiple AI-ready contexts (Markdown/JSON) and ready-to-copy AI prompts from analyzed `RepositoryModel` with AI task presets, purpose/scope, token budget, Try Another / New Context, and session history
 - Contributor docs: `CONTRIBUTING.md`, `docs/README.md`, `docs/architecture/REPO_LAYOUT.md`, `./scripts/package-ui.sh`
 - Diagram modes: Architecture, Package, Class, Sequence, ER, DFD, Activity, Deployment, Use Case, State Machine
 - Client-side graph filtering (kinds, relationship types, name search)
@@ -41,10 +40,13 @@
 - Specialized diagrams may be empty when the repository lacks structural signals
 - Large graphs are capped by node/edge/fact limits
 - Call resolution is heuristic (not a full Java compiler); unresolved receivers yield no CALLS edge
-- Context Studio token counts are **estimates** (approx. 4 chars/token), not exact LLM tokenizer counts
-- Context Studio history is session/UI-scoped (not persisted to a database)
-- Context Studio generates prompts locally; it does not call AI providers or execute prompts
 - Manifest ingestion, DETECTED_ONLY language status
+- Remote GitHub clone cache is reuse-only: if `~/.repolens/cache/remotes/{owner}/{repo}/.git`
+  exists, analysis uses that working tree without fetch/pull. Extra or outdated
+  files in the cache are included. Delete the cache directory to re-clone.
+- Chromium's accessibility snapshot may mark native graph-filter checkboxes as
+  `readonly` even when `readOnly`/`disabled` are false and mouse/keyboard toggle
+  works. This is an AX-tree representation quirk, not a non-interactive control.
 
 ## Open product decisions
 

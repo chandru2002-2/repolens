@@ -99,22 +99,6 @@ CALLS confidence (static analysis):
 - **medium** — capitalized receiver name matches a known type
 - Relationships below the emit threshold are omitted rather than guessed
 
-## Context Studio (v1.6)
-
-Generate **AI-ready repository context** and a **ready-to-copy AI prompt** from existing RepoLens analysis — deterministic packaging, not an LLM discovering architecture.
-
-- AI task presets (architecture, auth/security, selected symbol, API trace, JPA, dependencies, debug, architecture risks, onboarding, documentation) plus free-text custom task
-- Scope / purposes: Full Repository, Architecture, Selected Files/Symbols, API/Backend, Database/JPA, Security, Custom
-- Token budgets: 2K / 4K / 8K / 16K / 32K or custom (validated); counts are **estimated** (~4 chars/token)
-- Formats: Markdown (primary) and JSON for the raw context package
-- **Generate Context** packages repository information; **Generate AI Prompt** wraps that context with task + instructions (no provider call)
-- **Copy Prompt** / **Download** for use with ChatGPT / Claude / Cursor / other tools
-- **Try Another** keeps task + scope and regenerates with adjusted options; **New Context** starts a fresh configuration
-- Session history of generated contexts in the UI (not a database)
-- API: `POST /v1/jobs/{id}/context` on a completed analysis job — reuses `RepositoryModel`, does not re-parse; optional `aiTask` / `customTask` return `prompt` alongside `content`
-
-Open **Context Studio** from the exploring workspace after analysis completes.
-
 Graph filtering (client-side only — no re-analysis):
 
 - Toggle packages, classes, interfaces, enums, methods, and fields (core views)

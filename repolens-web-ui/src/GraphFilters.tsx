@@ -1,3 +1,4 @@
+import { useId } from "react";
 import type { GraphFilterState, GraphViewMode } from "./graphModel";
 
 type Props = {
@@ -15,9 +16,12 @@ function Toggle({
   checked: boolean;
   onChange: (value: boolean) => void;
 }) {
+  const id = useId();
   return (
-    <label className="filter-toggle">
+    <label className="filter-toggle" htmlFor={id}>
       <input
+        id={id}
+        name={id}
         type="checkbox"
         checked={checked}
         onChange={(event) => onChange(event.target.checked)}
@@ -33,7 +37,11 @@ export function GraphFilters({ view, filters, onChange }: Props) {
   const core = view === "architecture" || view === "package" || view === "class";
 
   return (
-    <div className="graph-filters" aria-label="Graph filters">
+    <form
+      className="graph-filters"
+      aria-label="Graph filters"
+      onSubmit={(event) => event.preventDefault()}
+    >
       <input
         className="filter-search"
         value={filters.query}
@@ -116,6 +124,6 @@ export function GraphFilters({ view, filters, onChange }: Props) {
       ) : (
         <p className="filter-hint">Name filter applies to the current specialized diagram.</p>
       )}
-    </div>
+    </form>
   );
 }

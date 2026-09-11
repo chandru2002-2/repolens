@@ -15,8 +15,8 @@ class SpringStructuralFactExtractorTest {
     }
 
     @Test
-    void humanizesRouteTail() {
-        assertEquals("Users", SpringStructuralFactExtractor.humanizeRoute("/api/users", "UserController"));
+    void humanizesRouteAsFullPath() {
+        assertEquals("/api/users", SpringStructuralFactExtractor.humanizeRoute("/api/users", "UserController"));
         assertEquals("User", SpringStructuralFactExtractor.humanizeRoute("/", "UserController"));
     }
 }

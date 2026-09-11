@@ -112,18 +112,17 @@ public final class SpringStructuralFactExtractor {
 
     static String humanizeRoute(String route, String ownerName) {
         if (route == null || route.isBlank() || "/".equals(route)) {
-            return ownerName.replace("Controller", "");
+            String fallback = ownerName.replace("Controller", "");
+            return fallback.isBlank() ? ownerName : fallback;
         }
-        String cleaned = route.replaceAll("[{}]", "").replaceAll("^/+|/+$", "");
-        if (cleaned.isBlank()) {
-            return ownerName.replace("Controller", "");
+        String cleaned = route.trim();
+        if (!cleaned.startsWith("/")) {
+            cleaned = "/" + cleaned;
         }
-        String[] parts = cleaned.split("/");
-        String last = parts[parts.length - 1];
-        if (last.isBlank()) {
-            return ownerName.replace("Controller", "");
+        if (cleaned.length() > 1 && cleaned.endsWith("/")) {
+            cleaned = cleaned.substring(0, cleaned.length() - 1);
         }
-        return Character.toUpperCase(last.charAt(0)) + last.substring(1);
+        return cleaned;
     }
 
     private static String pathName(String path) {

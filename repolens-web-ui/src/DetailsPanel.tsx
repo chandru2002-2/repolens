@@ -309,10 +309,10 @@ export function DetailsPanel({
                   <li key={related.id}>
                     <span className="rel-arrow" aria-hidden="true">
                       {group.direction === "out" ? "->" : "<-"}
-                    </span>
+                    </span>{" "}
                     <button type="button" className="linkish" onClick={() => onSelectNode(related.id)}>
                       {related.label}
-                    </button>
+                    </button>{" "}
                     <span className="rel-kind">{kindMeta(related.kind).short}</span>
                   </li>
                 ))}

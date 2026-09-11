@@ -76,10 +76,10 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
     private IngestionResult ingestLocal(String source) {
         Path workingTree = Path.of(source).toAbsolutePath().normalize();
         if (!Files.exists(workingTree)) {
-            throw new IngestionException("Path does not exist: " + workingTree);
+            throw new IngestionException("The local path does not exist.");
         }
         if (!Files.isDirectory(workingTree)) {
-            throw new IngestionException("Path is not a directory: " + workingTree);
+            throw new IngestionException("The local path is not a directory.");
         }
 
         try {
@@ -96,7 +96,7 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
         } catch (IngestionException ex) {
             throw ex;
         } catch (IOException ex) {
-            throw new IngestionException("Failed to ingest local repository: " + workingTree, ex);
+            throw new IngestionException("Failed to ingest the local repository.", ex);
         }
     }
 

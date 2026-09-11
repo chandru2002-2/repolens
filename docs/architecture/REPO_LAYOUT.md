@@ -11,7 +11,7 @@ settings.gradle.kts
 ├── repolens-core          Domain model, ports, pipeline contracts
 ├── repolens-ingest        Local + allowlisted GitHub ingestion
 ├── repolens-parse         Source → RepositoryModel (language profiles)
-├── repolens-analyzers     Model-only analyzers + graph/diagram/context projection
+├── repolens-analyzers     Model-only analyzers + graph/diagram projection
 ├── repolens-api-model     Stable v1 JSON DTOs / mappers
 ├── repolens-cli           CLI adapter
 └── repolens-web           Javalin API + packaged static UI
@@ -21,7 +21,7 @@ Dependency direction (simplified):
 
 ```
 cli / web  →  api-model, analyzers, parse, ingest, core
-analyzers  →  core          (never Tree-sitter / parse internals; Context Studio packages model data)
+analyzers  →  core          (never Tree-sitter / parse internals)
 parse      →  core
 ingest     →  core
 api-model  →  core (+ DTOs for external JSON)
@@ -30,7 +30,7 @@ api-model  →  core (+ DTOs for external JSON)
 Invariants:
 
 1. `RepositoryModel` is the central contract (ADR-002).
-2. Analyzers must not parse source (ADR-004). Context Studio also must not parse source — it selects and formats existing intelligence into context packages and ready-to-copy AI prompts (no provider calls).
+2. Analyzers must not parse source (ADR-004).
 3. CLI and Web stay thin adapters — no language-specific parsing.
 
 ## Frontend
