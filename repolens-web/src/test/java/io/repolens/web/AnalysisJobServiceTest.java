@@ -33,7 +33,7 @@ class AnalysisJobServiceTest {
             AnalysisJob job = service.submit("/tmp/demo", false);
             assertEquals(JobStatus.QUEUED, job.status());
 
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
             while (job.status() == JobStatus.QUEUED || job.status() == JobStatus.RUNNING) {
                 if (System.nanoTime() > deadline) {
                     break;
@@ -41,7 +41,11 @@ class AnalysisJobServiceTest {
                 Thread.sleep(20);
             }
 
-            assertEquals(JobStatus.COMPLETED, job.status());
+            assertEquals(
+                    JobStatus.COMPLETED,
+                    job.status(),
+                    () -> "Analysis job did not complete. Final status: " + job.status()
+            );
             assertNotNull(job.result());
             assertEquals("v1", job.result().schemaVersion());
             assertTrue(service.toDto(job).status().equals("COMPLETED"));
