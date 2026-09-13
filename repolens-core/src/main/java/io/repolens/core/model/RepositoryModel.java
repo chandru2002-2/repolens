@@ -29,6 +29,8 @@ public final class RepositoryModel {
     private final Map<String, DocumentationReference> documentationReferencesById;
     private final RepositoryMetadata metadata;
     private final Map<String, StructuralFact> structuralFactsById;
+    private final Map<String, Endpoint> endpointsById;
+    private final Map<String, Test> testsById;
 
     private RepositoryModel(Builder builder) {
         this.repository = Objects.requireNonNull(builder.repository, "repository");
@@ -44,6 +46,8 @@ public final class RepositoryModel {
         this.metadata = Objects.requireNonNullElse(builder.metadata, RepositoryMetadata.EMPTY);
         // Preserve insertion order — diagram projectors process facts in category order.
         this.structuralFactsById = Collections.unmodifiableMap(new LinkedHashMap<>(builder.structuralFactsById));
+        this.endpointsById = Collections.unmodifiableMap(new LinkedHashMap<>(builder.endpointsById));
+        this.testsById = Collections.unmodifiableMap(new LinkedHashMap<>(builder.testsById));
     }
 
     public Repository repository() {
@@ -124,6 +128,22 @@ public final class RepositoryModel {
                 .toList();
     }
 
+    public Collection<Endpoint> endpoints() {
+        return endpointsById.values();
+    }
+
+    public Optional<Endpoint> findEndpoint(String id) {
+        return Optional.ofNullable(endpointsById.get(id));
+    }
+
+    public Collection<Test> tests() {
+        return testsById.values();
+    }
+
+    public Optional<Test> findTest(String id) {
+        return Optional.ofNullable(testsById.get(id));
+    }
+
     /** Returns a copy of this model with replaced metadata (pipeline enrichment). */
     public RepositoryModel withMetadata(RepositoryMetadata metadata) {
         Objects.requireNonNull(metadata, "metadata");
@@ -138,6 +158,8 @@ public final class RepositoryModel {
         documentsById.values().forEach(builder::addDocumentation);
         documentationReferencesById.values().forEach(builder::addDocumentationReference);
         structuralFactsById.values().forEach(builder::addStructuralFact);
+        endpointsById.values().forEach(builder::addEndpoint);
+        testsById.values().forEach(builder::addTest);
         return builder.build();
     }
 
@@ -165,6 +187,8 @@ public final class RepositoryModel {
         private final Map<String, DocumentationDocument> documentsById = new LinkedHashMap<>();
         private final Map<String, DocumentationReference> documentationReferencesById = new LinkedHashMap<>();
         private final Map<String, StructuralFact> structuralFactsById = new LinkedHashMap<>();
+        private final Map<String, Endpoint> endpointsById = new LinkedHashMap<>();
+        private final Map<String, Test> testsById = new LinkedHashMap<>();
         private RepositoryMetadata metadata = RepositoryMetadata.EMPTY;
 
         private Builder(Repository repository) {
@@ -262,6 +286,24 @@ public final class RepositoryModel {
             return this;
         }
 
+        public Builder addEndpoint(Endpoint endpoint) {
+            Objects.requireNonNull(endpoint, "endpoint");
+            if (endpointsById.containsKey(endpoint.id())) {
+                throw new IllegalArgumentException("duplicate endpoint id: " + endpoint.id());
+            }
+            endpointsById.put(endpoint.id(), endpoint);
+            return this;
+        }
+
+        public Builder addTest(Test test) {
+            Objects.requireNonNull(test, "test");
+            if (testsById.containsKey(test.id())) {
+                throw new IllegalArgumentException("duplicate test id: " + test.id());
+            }
+            testsById.put(test.id(), test);
+            return this;
+        }
+
         public RepositoryModel build() {
             for (Symbol symbol : symbolsById.values()) {
                 symbol.moduleId().ifPresent(moduleId -> {
@@ -314,7 +356,39 @@ public final class RepositoryModel {
                                     + " references unknown entity " + entityId);
                 }
             }
+            for (Endpoint endpoint : endpointsById.values()) {
+                requireKnownFile(endpoint.location().filePath(), "endpoint " + endpoint.id());
+                endpoint.evidence().location().ifPresent(location ->
+                        requireKnownFile(location.filePath(), "endpoint " + endpoint.id() + " evidence"));
+                endpoint.ownerTypeId().ifPresent(ownerId -> {
+                    if (!symbolsById.containsKey(ownerId)) {
+                        throw new IllegalStateException(
+                                "endpoint " + endpoint.id() + " references unknown owner type " + ownerId);
+                    }
+                });
+                endpoint.handlerMethodId().ifPresent(handlerId -> {
+                    if (!symbolsById.containsKey(handlerId)) {
+                        throw new IllegalStateException(
+                                "endpoint " + endpoint.id() + " references unknown handler " + handlerId);
+                    }
+                });
+            }
+            for (Test test : testsById.values()) {
+                requireKnownFile(test.location().filePath(), "test " + test.id());
+                test.evidence().location().ifPresent(location ->
+                        requireKnownFile(location.filePath(), "test " + test.id() + " evidence"));
+                if (!symbolsById.containsKey(test.symbolId())) {
+                    throw new IllegalStateException(
+                            "test " + test.id() + " references unknown symbol " + test.symbolId());
+                }
+            }
             return new RepositoryModel(this);
+        }
+
+        private void requireKnownFile(String filePath, String subject) {
+            if (!filesByPath.containsKey(filePath)) {
+                throw new IllegalStateException(subject + " references unknown file " + filePath);
+            }
         }
 
         /** Snapshot used by tests; returns an unmodifiable view of current files. */

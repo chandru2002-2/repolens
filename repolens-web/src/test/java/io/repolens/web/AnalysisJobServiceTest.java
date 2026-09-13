@@ -48,6 +48,9 @@ class AnalysisJobServiceTest {
             );
             assertNotNull(job.result());
             assertEquals("v1", job.result().schemaVersion());
+            assertTrue(job.result().endpoints().isEmpty());
+            assertTrue(job.result().tests().isEmpty());
+            assertTrue(job.result().traces().isEmpty());
             assertTrue(service.toDto(job).status().equals("COMPLETED"));
         }
     }

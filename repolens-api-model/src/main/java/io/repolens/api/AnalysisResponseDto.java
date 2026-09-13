@@ -7,8 +7,9 @@ import java.util.Objects;
  * Stable v1 JSON-oriented analysis contract shared by CLI and Web.
  * Adapters map domain types to these DTOs; they do not parse source.
  *
- * <p>Optional {@code documentation} and {@code symbols} fields support
- * interactive inspection (current API schema v1) and default to empty lists.
+ * <p>Optional {@code documentation}, {@code symbols}, {@code diagrams},
+ * {@code endpoints}, {@code tests}, and {@code traces} fields default to empty lists.
+ * Impact is per selected entity and is not stored on this result.
  */
 public record AnalysisResponseDto(
         String schemaVersion,
@@ -19,7 +20,10 @@ public record AnalysisResponseDto(
         List<DocumentationDto> documentation,
         List<SymbolDetailDto> symbols,
         RepositoryMetadataDto metadata,
-        List<DiagramDto> diagrams
+        List<DiagramDto> diagrams,
+        List<EndpointDto> endpoints,
+        List<TestDto> tests,
+        List<TraceDto> traces
 ) {
     public static final String SCHEMA_VERSION = "v1";
 
@@ -38,10 +42,22 @@ public record AnalysisResponseDto(
         if (diagrams == null) {
             diagrams = List.of();
         }
+        if (endpoints == null) {
+            endpoints = List.of();
+        }
+        if (tests == null) {
+            tests = List.of();
+        }
+        if (traces == null) {
+            traces = List.of();
+        }
         results = List.copyOf(results);
         documentation = List.copyOf(documentation);
         symbols = List.copyOf(symbols);
         diagrams = List.copyOf(diagrams);
+        endpoints = List.copyOf(endpoints);
+        tests = List.copyOf(tests);
+        traces = List.copyOf(traces);
     }
 
     /** Backward-compatible factory used by older call sites / tests. */
@@ -61,6 +77,9 @@ public record AnalysisResponseDto(
                 List.of(),
                 List.of(),
                 null,
+                List.of(),
+                List.of(),
+                List.of(),
                 List.of()
         );
     }
@@ -258,6 +277,143 @@ public record AnalysisResponseDto(
             Objects.requireNonNull(type, "type");
             Objects.requireNonNull(title, "title");
             Objects.requireNonNull(graph, "graph");
+        }
+    }
+
+    public record SourceLocationDto(
+            String filePath,
+            int startLine,
+            int startColumn,
+            int endLine,
+            int endColumn
+    ) {
+        public SourceLocationDto {
+            Objects.requireNonNull(filePath, "filePath");
+        }
+    }
+
+    public record EvidenceDto(
+            String inferenceMethod,
+            SourceLocationDto location,
+            String referencedId,
+            String summary
+    ) {
+        public EvidenceDto {
+            Objects.requireNonNull(inferenceMethod, "inferenceMethod");
+        }
+    }
+
+    public record EndpointDto(
+            String id,
+            String httpMethod,
+            String path,
+            String ownerTypeId,
+            String handlerMethodId,
+            SourceLocationDto location,
+            EvidenceDto evidence
+    ) {
+        public EndpointDto {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(httpMethod, "httpMethod");
+            Objects.requireNonNull(path, "path");
+            Objects.requireNonNull(location, "location");
+            Objects.requireNonNull(evidence, "evidence");
+        }
+    }
+
+    public record TestDto(
+            String id,
+            String symbolId,
+            String frameworkHint,
+            SourceLocationDto location,
+            EvidenceDto evidence
+    ) {
+        public TestDto {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(symbolId, "symbolId");
+            Objects.requireNonNull(location, "location");
+            Objects.requireNonNull(evidence, "evidence");
+        }
+    }
+
+    public record TraceHopDto(
+            String entityId,
+            String role,
+            String relationshipId,
+            EvidenceDto evidence,
+            double confidence,
+            boolean resolved
+    ) {
+        public TraceHopDto {
+            Objects.requireNonNull(entityId, "entityId");
+            Objects.requireNonNull(role, "role");
+            Objects.requireNonNull(evidence, "evidence");
+        }
+    }
+
+    public record TraceDto(
+            String id,
+            String endpointId,
+            List<TraceHopDto> hops,
+            double confidence,
+            boolean unresolved,
+            String inferenceKind
+    ) {
+        public TraceDto {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(endpointId, "endpointId");
+            Objects.requireNonNull(hops, "hops");
+            Objects.requireNonNull(inferenceKind, "inferenceKind");
+            hops = List.copyOf(hops);
+        }
+    }
+
+    public record ImpactItemDto(
+            String entityId,
+            String category,
+            boolean inferred,
+            double confidence,
+            EvidenceDto evidence,
+            String relationshipId,
+            String traceId
+    ) {
+        public ImpactItemDto {
+            Objects.requireNonNull(entityId, "entityId");
+            Objects.requireNonNull(category, "category");
+            Objects.requireNonNull(evidence, "evidence");
+        }
+    }
+
+    public record ImpactDto(
+            String entityId,
+            List<ImpactItemDto> callers,
+            List<ImpactItemDto> dependents,
+            List<ImpactItemDto> tests,
+            List<ImpactItemDto> endpoints,
+            List<ImpactItemDto> inferred
+    ) {
+        public ImpactDto {
+            Objects.requireNonNull(entityId, "entityId");
+            if (callers == null) {
+                callers = List.of();
+            }
+            if (dependents == null) {
+                dependents = List.of();
+            }
+            if (tests == null) {
+                tests = List.of();
+            }
+            if (endpoints == null) {
+                endpoints = List.of();
+            }
+            if (inferred == null) {
+                inferred = List.of();
+            }
+            callers = List.copyOf(callers);
+            dependents = List.copyOf(dependents);
+            tests = List.copyOf(tests);
+            endpoints = List.copyOf(endpoints);
+            inferred = List.copyOf(inferred);
         }
     }
 }

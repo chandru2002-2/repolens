@@ -2,12 +2,16 @@ package io.repolens.web;
 
 import io.repolens.analyzers.DiagramProjector;
 import io.repolens.analyzers.GraphViewProjector;
+import io.repolens.analyzers.ImpactComposer;
+import io.repolens.analyzers.TraceComposer;
 import io.repolens.api.AnalysisJobDto;
 import io.repolens.api.AnalysisResponseDto;
 import io.repolens.api.AnalysisResponseMapper;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.NamedDiagram;
+import io.repolens.core.model.RepositoryModel;
+import io.repolens.core.model.Trace;
 import io.repolens.core.ports.AnalysisRunner;
 import io.repolens.ingest.UserFacingErrors;
 
@@ -73,8 +77,9 @@ public final class AnalysisJobService implements AutoCloseable {
             List<AnalysisResult> results = run.results();
             GraphView graph = GraphViewProjector.project(run.model(), results);
             List<NamedDiagram> diagrams = DiagramProjector.projectAll(run.model());
-            AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph, diagrams);
-            job.markCompleted(response);
+            List<Trace> traces = TraceComposer.compose(run.model());
+            AnalysisResponseDto response = AnalysisResponseMapper.from(run.model(), results, graph, diagrams, traces);
+            job.markCompleted(response, run.model(), traces);
         } catch (Exception ex) {
             job.markFailed(UserFacingErrors.sanitize(
                     ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
@@ -84,5 +89,31 @@ public final class AnalysisJobService implements AutoCloseable {
     @Override
     public void close() {
         executor.shutdownNow();
+    }
+
+    public Optional<AnalysisResponseDto.ImpactDto> impactFor(AnalysisJob job, String entityId) {
+        Objects.requireNonNull(job, "job");
+        if (entityId == null || entityId.isBlank()) {
+            throw new IllegalArgumentException("entityId is required");
+        }
+        if (job.status() != JobStatus.COMPLETED || job.model() == null) {
+            return Optional.empty();
+        }
+        RepositoryModel model = job.model();
+        if (!knownEntity(model, entityId)) {
+            return Optional.empty();
+        }
+        return Optional.of(AnalysisResponseMapper.mapImpact(
+                ImpactComposer.compose(model, entityId, job.traces())
+        ));
+    }
+
+    private static boolean knownEntity(RepositoryModel model, String entityId) {
+        if (model.findSymbol(entityId).isPresent()
+                || model.findEndpoint(entityId).isPresent()
+                || model.findTest(entityId).isPresent()) {
+            return true;
+        }
+        return model.tests().stream().anyMatch(test -> test.symbolId().equals(entityId));
     }
 }

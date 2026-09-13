@@ -2,6 +2,7 @@ package io.repolens.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.javalin.Javalin;
+import io.javalin.http.Context;
 import io.javalin.http.HttpStatus;
 import io.javalin.http.staticfiles.Location;
 import io.javalin.json.JavalinJackson;
@@ -133,8 +134,68 @@ public final class RepoLensServer implements AutoCloseable {
                 ));
                 return;
             }
-            AnalysisResponseDto result = job.result();
-            ctx.json(result.graph());
+            ctx.json(job.result().graph());
+        });
+
+        app.get("/v1/jobs/{id}/endpoints", ctx -> {
+            AnalysisResponseDto result = completedIntelligence(ctx, "endpoints not ready");
+            if (result != null) {
+                ctx.json(result.endpoints());
+            }
+        });
+
+        app.get("/v1/jobs/{id}/tests", ctx -> {
+            AnalysisResponseDto result = completedIntelligence(ctx, "tests not ready");
+            if (result != null) {
+                ctx.json(result.tests());
+            }
+        });
+
+        app.get("/v1/jobs/{id}/traces", ctx -> {
+            AnalysisResponseDto result = completedIntelligence(ctx, "traces not ready");
+            if (result != null) {
+                ctx.json(result.traces());
+            }
+        });
+
+        app.get("/v1/jobs/{id}/impact/{entityId}", ctx -> {
+            String id = ctx.pathParam("id");
+            String entityId = ctx.pathParam("entityId");
+            AnalysisJob job = jobService.find(id).orElse(null);
+            if (job == null) {
+                ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "job not found"));
+                return;
+            }
+            if (entityId == null || entityId.isBlank()) {
+                ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", "entityId is required"));
+                return;
+            }
+            if (job.status() == JobStatus.FAILED) {
+                ctx.status(HttpStatus.UNPROCESSABLE_CONTENT).json(Map.of(
+                        "id", job.id(),
+                        "status", job.status().name(),
+                        "error", job.error()
+                ));
+                return;
+            }
+            if (job.status() != JobStatus.COMPLETED || job.result() == null) {
+                ctx.status(HttpStatus.CONFLICT).json(Map.of(
+                        "id", job.id(),
+                        "status", job.status().name(),
+                        "message", "impact not ready"
+                ));
+                return;
+            }
+            try {
+                var impact = jobService.impactFor(job, entityId);
+                if (impact.isEmpty()) {
+                    ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "entity not found"));
+                    return;
+                }
+                ctx.json(impact.get());
+            } catch (IllegalArgumentException ex) {
+                ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", ex.getMessage()));
+            }
         });
 
         app.error(404, ctx -> {
@@ -159,6 +220,32 @@ public final class RepoLensServer implements AutoCloseable {
 
     public int port() {
         return port;
+    }
+
+    private AnalysisResponseDto completedIntelligence(Context ctx, String notReadyMessage) {
+        String id = ctx.pathParam("id");
+        AnalysisJob job = jobService.find(id).orElse(null);
+        if (job == null) {
+            ctx.status(HttpStatus.NOT_FOUND).json(Map.of("error", "job not found"));
+            return null;
+        }
+        if (job.status() == JobStatus.FAILED) {
+            ctx.status(HttpStatus.UNPROCESSABLE_CONTENT).json(Map.of(
+                    "id", job.id(),
+                    "status", job.status().name(),
+                    "error", job.error()
+            ));
+            return null;
+        }
+        if (job.status() != JobStatus.COMPLETED || job.result() == null) {
+            ctx.status(HttpStatus.CONFLICT).json(Map.of(
+                    "id", job.id(),
+                    "status", job.status().name(),
+                    "message", notReadyMessage
+            ));
+            return null;
+        }
+        return job.result();
     }
 
     public void stop() {

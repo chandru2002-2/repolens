@@ -4,15 +4,23 @@ import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.CommitInfo;
 import io.repolens.core.model.DocumentationDocument;
 import io.repolens.core.model.DocumentationReference;
+import io.repolens.core.model.Endpoint;
+import io.repolens.core.model.Evidence;
 import io.repolens.core.model.GraphView;
+import io.repolens.core.model.Impact;
+import io.repolens.core.model.ImpactItem;
 import io.repolens.core.model.Metric;
 import io.repolens.core.model.NamedDiagram;
 import io.repolens.core.model.Repository;
 import io.repolens.core.model.RepositoryMetadata;
 import io.repolens.core.model.RepositoryModel;
 import io.repolens.core.model.RepositoryOrigin;
+import io.repolens.core.model.SourceLocation;
 import io.repolens.core.model.Symbol;
 import io.repolens.core.model.SymbolKind;
+import io.repolens.core.model.Test;
+import io.repolens.core.model.Trace;
+import io.repolens.core.model.TraceHop;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -43,6 +51,16 @@ public final class AnalysisResponseMapper {
             GraphView graph,
             List<NamedDiagram> diagrams
     ) {
+        return from(model, results, graph, diagrams, List.of());
+    }
+
+    public static AnalysisResponseDto from(
+            RepositoryModel model,
+            List<AnalysisResult> results,
+            GraphView graph,
+            List<NamedDiagram> diagrams,
+            List<Trace> traces
+    ) {
         Repository repository = model.repository();
         String source = repository.origin() == RepositoryOrigin.REMOTE
                 ? repository.remoteUrl().orElse("")
@@ -68,7 +86,21 @@ public final class AnalysisResponseMapper {
                 mapDocumentation(model),
                 mapSymbols(model),
                 mapMetadata(model.metadata()),
-                mapDiagrams(diagrams)
+                mapDiagrams(diagrams),
+                mapEndpoints(model),
+                mapTests(model),
+                mapTraces(traces)
+        );
+    }
+
+    public static AnalysisResponseDto.ImpactDto mapImpact(Impact impact) {
+        return new AnalysisResponseDto.ImpactDto(
+                impact.entityId(),
+                impact.callers().stream().map(AnalysisResponseMapper::mapImpactItem).toList(),
+                impact.dependents().stream().map(AnalysisResponseMapper::mapImpactItem).toList(),
+                impact.tests().stream().map(AnalysisResponseMapper::mapImpactItem).toList(),
+                impact.endpoints().stream().map(AnalysisResponseMapper::mapImpactItem).toList(),
+                impact.inferred().stream().map(AnalysisResponseMapper::mapImpactItem).toList()
         );
     }
 
@@ -233,5 +265,94 @@ public final class AnalysisResponseMapper {
                         diagram.truncated()
                 ))
                 .toList();
+    }
+
+    private static List<AnalysisResponseDto.EndpointDto> mapEndpoints(RepositoryModel model) {
+        return model.endpoints().stream()
+                .sorted(Comparator
+                        .comparing(Endpoint::path)
+                        .thenComparing(Endpoint::httpMethod)
+                        .thenComparing(Endpoint::id))
+                .map(endpoint -> new AnalysisResponseDto.EndpointDto(
+                        endpoint.id(),
+                        endpoint.httpMethod(),
+                        endpoint.path(),
+                        endpoint.ownerTypeId().orElse(null),
+                        endpoint.handlerMethodId().orElse(null),
+                        mapLocation(endpoint.location()),
+                        mapEvidence(endpoint.evidence())
+                ))
+                .toList();
+    }
+
+    private static List<AnalysisResponseDto.TestDto> mapTests(RepositoryModel model) {
+        return model.tests().stream()
+                .sorted(Comparator.comparing(Test::id))
+                .map(test -> new AnalysisResponseDto.TestDto(
+                        test.id(),
+                        test.symbolId(),
+                        test.frameworkHint().orElse(null),
+                        mapLocation(test.location()),
+                        mapEvidence(test.evidence())
+                ))
+                .toList();
+    }
+
+    private static List<AnalysisResponseDto.TraceDto> mapTraces(List<Trace> traces) {
+        if (traces == null || traces.isEmpty()) {
+            return List.of();
+        }
+        return traces.stream()
+                .map(trace -> new AnalysisResponseDto.TraceDto(
+                        trace.id(),
+                        trace.endpointId(),
+                        trace.hops().stream().map(AnalysisResponseMapper::mapHop).toList(),
+                        trace.confidence(),
+                        trace.unresolved(),
+                        trace.inferenceKind()
+                ))
+                .toList();
+    }
+
+    private static AnalysisResponseDto.TraceHopDto mapHop(TraceHop hop) {
+        return new AnalysisResponseDto.TraceHopDto(
+                hop.entityId(),
+                hop.role(),
+                hop.relationshipId().orElse(null),
+                mapEvidence(hop.evidence()),
+                hop.confidence(),
+                hop.resolved()
+        );
+    }
+
+    private static AnalysisResponseDto.ImpactItemDto mapImpactItem(ImpactItem item) {
+        return new AnalysisResponseDto.ImpactItemDto(
+                item.entityId(),
+                item.category(),
+                item.inferred(),
+                item.confidence(),
+                mapEvidence(item.evidence()),
+                item.relationshipId().orElse(null),
+                item.traceId().orElse(null)
+        );
+    }
+
+    private static AnalysisResponseDto.EvidenceDto mapEvidence(Evidence evidence) {
+        return new AnalysisResponseDto.EvidenceDto(
+                evidence.inferenceMethod().name(),
+                evidence.location().map(AnalysisResponseMapper::mapLocation).orElse(null),
+                evidence.referencedId().orElse(null),
+                evidence.summary().orElse(null)
+        );
+    }
+
+    private static AnalysisResponseDto.SourceLocationDto mapLocation(SourceLocation location) {
+        return new AnalysisResponseDto.SourceLocationDto(
+                location.filePath(),
+                location.startLine(),
+                location.startColumn(),
+                location.endLine(),
+                location.endColumn()
+        );
     }
 }

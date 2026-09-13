@@ -16,6 +16,8 @@ public final class AnalyzersModule {
                 new StructureAnalyzer(),
                 new DependencyAnalyzer(),
                 new TypeDependencyAnalyzer(),
+                new TestSubjectAnalyzer(),
+                new TraceComposer(),
                 new MetricsAnalyzer()
         );
     }

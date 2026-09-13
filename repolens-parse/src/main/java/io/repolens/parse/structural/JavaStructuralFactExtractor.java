@@ -17,5 +17,6 @@ public final class JavaStructuralFactExtractor {
         CallStructuralFactExtractor.extract(sink, path, source, owner);
         ActivityStructuralFactExtractor.extract(sink, path, source, owner);
         StateStructuralFactExtractor.extract(sink, path, source, owner);
+        JavaTestFactExtractor.extract(sink, path, source);
     }
 }

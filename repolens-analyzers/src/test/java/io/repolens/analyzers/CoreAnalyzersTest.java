@@ -88,7 +88,7 @@ class CoreAnalyzersTest {
 
     @Test
     void defaultAnalyzersAreWired() {
-        assertEquals(4, AnalyzersModule.defaultAnalyzers().size());
+        assertEquals(6, AnalyzersModule.defaultAnalyzers().size());
     }
 
     @Test

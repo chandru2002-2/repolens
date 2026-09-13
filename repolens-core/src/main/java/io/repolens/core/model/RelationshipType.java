@@ -9,5 +9,6 @@ public enum RelationshipType {
     EXTENDS,
     IMPLEMENTS,
     DEPENDS_ON,
-    CALLS
+    CALLS,
+    TESTS
 }

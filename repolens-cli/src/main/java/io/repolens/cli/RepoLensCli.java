@@ -5,12 +5,14 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import io.repolens.analyzers.AnalyzersModule;
 import io.repolens.analyzers.DiagramProjector;
 import io.repolens.analyzers.GraphViewProjector;
+import io.repolens.analyzers.TraceComposer;
 import io.repolens.api.AnalysisResponseDto;
 import io.repolens.api.AnalysisResponseMapper;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.RepositoryModel;
 import io.repolens.core.model.SymbolKind;
+import io.repolens.core.model.Trace;
 import io.repolens.core.pipeline.DefaultAnalysisRunner;
 import io.repolens.core.ports.AnalysisRunner;
 import io.repolens.core.ports.IngestionException;
@@ -40,11 +42,19 @@ public final class RepoLensCli {
     }
 
     public static void main(String[] args) {
+        int code = execute(args);
+        if (code != 0) {
+            System.exit(code);
+        }
+    }
+
+    /** Package-visible for tests; {@code 0} is success. */
+    static int execute(String[] args) {
         quietNativeProbeLogs();
 
         if (args.length == 0 || isHelp(args[0])) {
             printUsage();
-            return;
+            return 0;
         }
 
         List<String> tokens = new ArrayList<>(List.of(args));
@@ -63,6 +73,18 @@ public final class RepoLensCli {
                     requireArg(tokens, 1, "analyze <local-path> [--json] [-o file]");
                     runAnalyze(tokens.get(1), json, output);
                 }
+                case "endpoints" -> {
+                    requireArg(tokens, 1, "endpoints <local-path> [--json] [-o file]");
+                    runEndpoints(tokens.get(1), json, output);
+                }
+                case "tests" -> {
+                    requireArg(tokens, 1, "tests <local-path> [--json] [-o file]");
+                    runTests(tokens.get(1), json, output);
+                }
+                case "trace" -> {
+                    requireArg(tokens, 1, "trace <local-path> [--json] [-o file]");
+                    runTraces(tokens.get(1), json, output);
+                }
                 case "serve" -> runServe(port == null ? 8080 : port);
                 default -> {
                     if (tokens.size() >= 1 && !command.startsWith("-")) {
@@ -70,16 +92,17 @@ public final class RepoLensCli {
                     } else {
                         System.err.println("Unknown command: " + command);
                         printUsage();
-                        System.exit(2);
+                        return 2;
                     }
                 }
             }
+            return 0;
         } catch (CliException ex) {
             System.err.println(ex.getMessage());
-            System.exit(ex.exitCode());
+            return ex.exitCode();
         } catch (Exception ex) {
             System.err.println("Command failed: " + ex.getMessage());
-            System.exit(1);
+            return 1;
         }
     }
 
@@ -137,11 +160,10 @@ public final class RepoLensCli {
         }
     }
 
-    private static void runAnalyze(String path, boolean json, Path output) {
-        LocalRepositoryIngestor ingestor = IngestModule.localIngestor();
+    private static LocalRun runLocal(String path) {
         ProfiledSourceAnalyzer sourceAnalyzer = ParseModule.sourceAnalyzer();
         DefaultAnalysisRunner runner = new DefaultAnalysisRunner(
-                ingestor,
+                IngestModule.localIngestor(),
                 sourceAnalyzer,
                 AnalyzersModule.defaultAnalyzers(),
                 IngestModule.metadataCollector()
@@ -152,12 +174,29 @@ public final class RepoLensCli {
             RepositoryModel model = result.model();
             List<AnalysisResult> analyses = result.results();
             GraphView graph = GraphViewProjector.project(model, analyses);
+            List<Trace> traces = TraceComposer.compose(model);
             AnalysisResponseDto dto = AnalysisResponseMapper.from(
                     model,
                     analyses,
                     graph,
-                    DiagramProjector.projectAll(model)
+                    DiagramProjector.projectAll(model),
+                    traces
             );
+            return new LocalRun(model, analyses, graph, dto, sourceAnalyzer.engineId());
+        } catch (IngestionException ex) {
+            throw new CliException("Analyze failed during ingest: " + ex.getMessage(), 1);
+        } catch (Exception ex) {
+            throw new CliException("Analyze failed: " + ex.getMessage(), 1);
+        }
+    }
+
+    private static void runAnalyze(String path, boolean json, Path output) {
+        try {
+            LocalRun local = runLocal(path);
+            RepositoryModel model = local.model();
+            List<AnalysisResult> analyses = local.analyses();
+            GraphView graph = local.graph();
+            AnalysisResponseDto dto = local.dto();
 
             if (json) {
                 writeOutput(JSON.writeValueAsString(dto), output);
@@ -179,7 +218,7 @@ public final class RepoLensCli {
                 commit.author().ifPresent(author ->
                         report.append("Commit by  : ").append(author).append('\n'));
             });
-            report.append("Parse engine: ").append(sourceAnalyzer.engineId()).append('\n');
+            report.append("Parse engine: ").append(local.parseEngineId()).append('\n');
             report.append("Files      : ").append(model.fileCount()).append('\n');
             report.append("Modules    : ").append(model.modules().size()).append('\n');
             report.append("Symbols    : ").append(model.symbolCount()).append('\n');
@@ -208,12 +247,105 @@ public final class RepoLensCli {
                             .append(symbol.location().filePath()).append(':')
                             .append(symbol.location().startLine()).append('\n'));
 
+            report.append("\n-- Intelligence (static, not runtime) --\n");
+            report.append("Endpoints : ").append(dto.endpoints().size()).append('\n');
+            report.append("Tests     : ").append(dto.tests().size()).append('\n');
+            report.append("Traces    : ").append(dto.traces().size()).append(" static paths\n");
+
             writeOutput(report.toString(), output);
-        } catch (IngestionException ex) {
-            throw new CliException("Analyze failed during ingest: " + ex.getMessage(), 1);
         } catch (Exception ex) {
+            if (ex instanceof CliException cli) {
+                throw cli;
+            }
             throw new CliException("Analyze failed: " + ex.getMessage(), 1);
         }
+    }
+
+    private static void runEndpoints(String path, boolean json, Path output) throws Exception {
+        AnalysisResponseDto dto = runLocal(path).dto();
+        if (json) {
+            writeOutput(JSON.writeValueAsString(dto.endpoints()), output);
+            return;
+        }
+        StringBuilder report = new StringBuilder();
+        report.append("== RepoLens Endpoints ==\n");
+        report.append("Static declarations from analysis facts. Not inferred at runtime.\n");
+        if (dto.endpoints().isEmpty()) {
+            report.append("No endpoints found.\n");
+        } else {
+            for (AnalysisResponseDto.EndpointDto endpoint : dto.endpoints()) {
+                report.append(endpoint.httpMethod()).append(' ').append(endpoint.path())
+                        .append("  id=").append(endpoint.id());
+                if (endpoint.handlerMethodId() != null) {
+                    report.append("  handler=").append(endpoint.handlerMethodId());
+                }
+                report.append("  evidence=").append(endpoint.evidence().inferenceMethod())
+                        .append('\n');
+            }
+        }
+        writeOutput(report.toString(), output);
+    }
+
+    private static void runTests(String path, boolean json, Path output) throws Exception {
+        AnalysisResponseDto dto = runLocal(path).dto();
+        if (json) {
+            writeOutput(JSON.writeValueAsString(dto.tests()), output);
+            return;
+        }
+        StringBuilder report = new StringBuilder();
+        report.append("== RepoLens Tests ==\n");
+        report.append("Discovered test facts. Subject links are inferred from relationships, not claimed coverage.\n");
+        if (dto.tests().isEmpty()) {
+            report.append("No tests found.\n");
+        } else {
+            for (AnalysisResponseDto.TestDto test : dto.tests()) {
+                report.append(test.id()).append("  symbol=").append(test.symbolId());
+                if (test.frameworkHint() != null) {
+                    report.append("  framework=").append(test.frameworkHint());
+                }
+                report.append("  evidence=").append(test.evidence().inferenceMethod()).append('\n');
+            }
+        }
+        writeOutput(report.toString(), output);
+    }
+
+    private static void runTraces(String path, boolean json, Path output) throws Exception {
+        AnalysisResponseDto dto = runLocal(path).dto();
+        if (json) {
+            writeOutput(JSON.writeValueAsString(dto.traces()), output);
+            return;
+        }
+        StringBuilder report = new StringBuilder();
+        report.append("== RepoLens Traces ==\n");
+        report.append("Static paths from endpoints and CALLS. Not runtime execution.\n");
+        if (dto.traces().isEmpty()) {
+            report.append("No traces found.\n");
+        } else {
+            for (AnalysisResponseDto.TraceDto trace : dto.traces()) {
+                report.append(trace.id())
+                        .append("  endpoint=").append(trace.endpointId())
+                        .append("  kind=").append(trace.inferenceKind())
+                        .append("  confidence=").append(trace.confidence())
+                        .append("  unresolved=").append(trace.unresolved())
+                        .append('\n');
+                for (AnalysisResponseDto.TraceHopDto hop : trace.hops()) {
+                    report.append("  hop ").append(hop.role()).append(' ').append(hop.entityId())
+                            .append("  confidence=").append(hop.confidence())
+                            .append("  resolved=").append(hop.resolved())
+                            .append('\n');
+                }
+            }
+        }
+        writeOutput(report.toString(), output);
+    }
+
+    private record LocalRun(
+            RepositoryModel model,
+            List<AnalysisResult> analyses,
+            GraphView graph,
+            AnalysisResponseDto dto,
+            String parseEngineId
+    ) {
     }
 
     private static void runServe(int port) {
@@ -299,6 +431,9 @@ public final class RepoLensCli {
                 Usage:
                   ingest <local-path> [--json] [-o file]
                   analyze <local-path> [--json|--format json] [-o file]
+                  endpoints <local-path> [--json] [-o file]
+                  tests <local-path> [--json] [-o file]
+                  trace <local-path> [--json] [-o file]
                   serve [--port 8080]
                   <local-path> [--json]
 

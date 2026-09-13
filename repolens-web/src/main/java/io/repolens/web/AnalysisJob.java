@@ -1,8 +1,11 @@
 package io.repolens.web;
 
 import io.repolens.api.AnalysisResponseDto;
+import io.repolens.core.model.RepositoryModel;
+import io.repolens.core.model.Trace;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -18,6 +21,8 @@ public final class AnalysisJob {
     private volatile Instant updatedAt;
     private volatile String error;
     private volatile AnalysisResponseDto result;
+    private volatile RepositoryModel model;
+    private volatile List<Trace> traces = List.of();
 
     public AnalysisJob(String id, String source, boolean remote) {
         this.id = Objects.requireNonNull(id, "id");
@@ -60,14 +65,28 @@ public final class AnalysisJob {
         return result;
     }
 
+    public RepositoryModel model() {
+        return model;
+    }
+
+    public List<Trace> traces() {
+        return traces;
+    }
+
     public synchronized void markRunning() {
         this.status = JobStatus.RUNNING;
         this.updatedAt = Instant.now();
     }
 
     public synchronized void markCompleted(AnalysisResponseDto result) {
+        markCompleted(result, null, List.of());
+    }
+
+    public synchronized void markCompleted(AnalysisResponseDto result, RepositoryModel model, List<Trace> traces) {
         this.status = JobStatus.COMPLETED;
         this.result = Objects.requireNonNull(result, "result");
+        this.model = model;
+        this.traces = traces == null ? List.of() : List.copyOf(traces);
         this.error = null;
         this.updatedAt = Instant.now();
     }

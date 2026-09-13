@@ -46,5 +46,11 @@ class AnalysisResponseMapperTest {
         assertTrue(json.contains("\"documentation\""));
         assertTrue(json.contains("\"symbols\""));
         assertTrue(json.contains("\"metadata\""));
+        assertTrue(json.contains("\"endpoints\""));
+        assertTrue(json.contains("\"tests\""));
+        assertTrue(json.contains("\"traces\""));
+        assertTrue(dto.endpoints().isEmpty());
+        assertTrue(dto.tests().isEmpty());
+        assertTrue(dto.traces().isEmpty());
     }
 }

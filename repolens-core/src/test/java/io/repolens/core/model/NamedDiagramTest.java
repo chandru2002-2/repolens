@@ -1,7 +1,5 @@
 package io.repolens.core.model;
 
-import org.junit.jupiter.api.Test;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -11,7 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class NamedDiagramTest {
 
-    @Test
+    @org.junit.jupiter.api.Test
     void nodesPlusLegacyEmptyMessageStillRenderAsNonEmpty() {
         GraphView graph = new GraphView(
                 "g",
@@ -32,7 +30,7 @@ class NamedDiagramTest {
         assertEquals("no relationships", diagram.advisoryMessage().orElse(""));
     }
 
-    @Test
+    @org.junit.jupiter.api.Test
     void truncatedNonEmptyKeepsGraph() {
         GraphView graph = new GraphView(
                 "g",
@@ -54,7 +52,7 @@ class NamedDiagramTest {
         assertTrue(diagram.advisoryMessage().isPresent());
     }
 
-    @Test
+    @org.junit.jupiter.api.Test
     void emptyDiagramUsesEmptyMessageOnly() {
         NamedDiagram empty = NamedDiagram.empty("er", "ER", "No entities");
         assertTrue(empty.graph().nodes().isEmpty());

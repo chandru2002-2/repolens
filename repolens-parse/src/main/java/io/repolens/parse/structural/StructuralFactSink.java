@@ -1,10 +1,12 @@
 package io.repolens.parse.structural;
 
+import io.repolens.core.model.Endpoint;
 import io.repolens.core.model.Relationship;
 import io.repolens.core.model.RepositoryModel;
 import io.repolens.core.model.StructuralFact;
 import io.repolens.core.model.Symbol;
 import io.repolens.core.model.SymbolKind;
+import io.repolens.core.model.Test;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,22 +23,30 @@ public final class StructuralFactSink {
 
     public static final int MAX_FACTS = 2_000;
     public static final int MAX_CALLS = 400;
+    public static final int MAX_ENDPOINTS = 400;
+    public static final int MAX_TESTS = 400;
     public static final int MAX_ACTIVITY_PER_METHOD = 24;
 
     private final RepositoryModel.Builder builder;
     private final Map<String, Symbol> typeByName;
     private final Map<String, Symbol> typeByFile;
     private final Map<String, List<Symbol>> methodsByParent;
+    private final Map<String, List<Symbol>> symbolsByFile;
     private final Set<String> seenCalls = new HashSet<>();
     private final Set<String> seenFactKeys = new HashSet<>();
+    private final Set<String> seenEndpointKeys = new HashSet<>();
+    private final Set<String> seenTestSymbols = new HashSet<>();
     private final List<Relationship> pendingCalls = new ArrayList<>();
     private int factSeq;
+    private int endpointSeq;
+    private int testSeq;
 
     public StructuralFactSink(RepositoryModel.Builder builder, List<Symbol> symbols) {
         this.builder = builder;
         this.typeByName = new HashMap<>();
         this.typeByFile = new HashMap<>();
         this.methodsByParent = new HashMap<>();
+        this.symbolsByFile = new HashMap<>();
         for (Symbol symbol : symbols) {
             if (isType(symbol.kind())) {
                 typeByName.putIfAbsent(symbol.name(), symbol);
@@ -44,6 +54,9 @@ public final class StructuralFactSink {
             }
             symbol.parentSymbolId().ifPresent(parent ->
                     methodsByParent.computeIfAbsent(parent, ignored -> new ArrayList<>()).add(symbol));
+            symbolsByFile
+                    .computeIfAbsent(symbol.location().filePath(), ignored -> new ArrayList<>())
+                    .add(symbol);
         }
     }
 
@@ -59,12 +72,67 @@ public final class StructuralFactSink {
         return methodsByParent;
     }
 
+    public List<Symbol> symbolsInFile(String path) {
+        return symbolsByFile.getOrDefault(path, List.of());
+    }
+
+    public boolean hasTestForSymbol(String symbolId) {
+        return seenTestSymbols.contains(symbolId);
+    }
+
     public List<Relationship> pendingCalls() {
         return pendingCalls;
     }
 
     public boolean factsFull() {
         return factSeq >= MAX_FACTS;
+    }
+
+    public boolean endpointsFull() {
+        return endpointSeq >= MAX_ENDPOINTS;
+    }
+
+    public void addEndpoint(Endpoint endpoint) {
+        if (endpoint == null || endpointSeq >= MAX_ENDPOINTS) {
+            return;
+        }
+        String dedupe = endpoint.httpMethod() + "|" + endpoint.path() + "|"
+                + endpoint.ownerTypeId().orElse("") + "|"
+                + endpoint.handlerMethodId().orElse("") + "|"
+                + endpoint.location().filePath() + "|"
+                + endpoint.location().startLine();
+        if (!seenEndpointKeys.add(dedupe)) {
+            return;
+        }
+        builder.addEndpoint(new Endpoint(
+                "endpoint:" + (++endpointSeq),
+                endpoint.httpMethod(),
+                endpoint.path(),
+                endpoint.ownerTypeId(),
+                endpoint.handlerMethodId(),
+                endpoint.location(),
+                endpoint.evidence()
+        ));
+    }
+
+    public boolean testsFull() {
+        return testSeq >= MAX_TESTS;
+    }
+
+    public void addTest(Test test) {
+        if (test == null || testSeq >= MAX_TESTS) {
+            return;
+        }
+        if (!seenTestSymbols.add(test.symbolId())) {
+            return;
+        }
+        builder.addTest(new Test(
+                "test:" + (++testSeq),
+                test.symbolId(),
+                test.frameworkHint(),
+                test.location(),
+                test.evidence()
+        ));
     }
 
     public boolean callsFull() {
