@@ -5,7 +5,7 @@ Living document of RepoLens language coverage. Statuses are honest:
 | Status | Meaning |
 |--------|---------|
 | **FULL** | Structural extraction + imports/modules/symbols + dependency edges + graph, with high confidence for common idioms |
-| **PARTIAL** | Meaningful `RepositoryModel` contribution; known gaps (inheritance, manifests, some constructs) |
+| **PARTIAL** | Meaningful `RepositoryModel` contribution; known gaps (manifests, some constructs; inheritance and CALLS vary by language) |
 | **DETECTED_ONLY** | Extension/manifest recognition without structural analysis (not used yet) |
 | **UNSUPPORTED** | No profile; files may still be inventoried with a bare extension language tag |
 
@@ -27,9 +27,24 @@ Language syntax lives only in `LanguageProfile` implementations under `repolens-
 | Kotlin | `.kt` `.kts` | Tree-sitter + fallback | `import` → `DEPENDS_ON` | Yes | PARTIAL |
 | C / C++ / Swift / PHP / Ruby / others | — | — | — | — | UNSUPPORTED |
 
-None of the current languages are marked **FULL**: inheritance (`EXTENDS`/`IMPLEMENTS`), call graphs, and package-manager manifests are not extracted yet.
+None of the current languages are marked **FULL**. Package-manager manifests are not ingested. Inheritance (`EXTENDS`/`IMPLEMENTS`) and CALLS are extracted for **Java** (CALLS are heuristic, not compiler-level resolution). Other Phase A languages do not emit inheritance or CALLS edges.
 
 ## Phase A languages (detail)
+
+### Java (`java`) — PARTIAL
+
+| Capability | Support |
+|------------|---------|
+| Detection | `.java` |
+| Module identity | `package` declaration; otherwise containing directory |
+| Imports | `import` / `import static` → module `DEPENDS_ON` when resolvable |
+| Symbols | class, interface, enum, methods, fields (instance-field capture; locals are not fields) |
+| Inheritance | `EXTENDS` / `IMPLEMENTS` from type declarations (Tree-sitter captures or structural fallback) |
+| CALLS | Static heuristic CALLS with confidence (`high` typed/static receiver, `medium` name heuristic). Unresolved receivers yield no edge. Not compiler-level resolution. |
+| JPA | Structural facts from `@Entity` and association annotations (`mappedBy` / `@JoinColumn` when present). Incomplete when generics or naming do not resolve a target type. |
+| Spring | Structural facts from typical Spring stereotypes and HTTP mappings used by sequence / use-case diagrams |
+| Other Java facts | Activity, state, deployment, and config extractors contribute specialized diagrams when evidence exists |
+| Limitations | No Maven/Gradle dependency graph; no full type-checking; CALLS and JPA associations can miss or under-count real relationships; specialized diagrams may be empty without evidence |
 
 ### Go (`go`) — PARTIAL
 
@@ -79,7 +94,7 @@ None of the current languages are marked **FULL**: inheritance (`EXTENDS`/`IMPLE
 
 Profiles emit captures consumed by `ProfiledSourceAnalyzer`:
 
-`module` · `import` · `class` · `interface` · `enum` · `type` · `function` · `method`
+`module` · `import` · `class` · `interface` · `enum` · `type` · `function` · `method` · `field` · `extends` · `implements`
 
 Tree-sitter queries and `fallbackExtract` must stay name-compatible.
 
@@ -89,4 +104,4 @@ A single inventory may contain multiple profiled languages. Each file is routed 
 
 ## Out of scope (not Phase A)
 
-C, C++, Swift, PHP, Ruby, Tier 2/3 languages, DETECTED_ONLY status, LanguageCapability API, manifest ingestion, `EXTENDS`/`IMPLEMENTS`, UI redesign.
+C, C++, Swift, PHP, Ruby, Tier 2/3 languages, DETECTED_ONLY status, LanguageCapability API, package-manager manifest ingestion, inheritance/CALLS for non-Java profiles, compiler-level Java resolution.

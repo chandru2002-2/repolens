@@ -7,8 +7,8 @@ import java.util.Objects;
  * Stable v1 JSON-oriented analysis contract shared by CLI and Web.
  * Adapters map domain types to these DTOs; they do not parse source.
  *
- * <p>Optional {@code documentation} and {@code symbols} fields were added for
- * interactive inspection (v1.2 feature set) and default to empty lists.
+ * <p>Optional {@code documentation} and {@code symbols} fields support
+ * interactive inspection (current API schema v1) and default to empty lists.
  */
 public record AnalysisResponseDto(
         String schemaVersion,

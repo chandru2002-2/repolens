@@ -2,7 +2,7 @@
 
 Thanks for contributing. This guide covers local development in the monorepo.
 Product architecture and module boundaries are intentional — see
-[AGENTS.md](AGENTS.md) and [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT.md).
+[docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT.md).
 
 ## Prerequisites
 
@@ -22,6 +22,22 @@ Product architecture and module boundaries are intentional — see
 
 Do **not** merge modules, collapse frontend/backend into single files, or move
 language parsing into CLI/Web.
+
+## Architecture invariants
+
+1. `RepositoryModel` is the central contract (ADR-002).
+2. Analyzers must not parse source or depend on Tree-sitter types (ADR-004).
+3. CLI and Web are thin adapters; they must not contain language-specific parsing.
+4. AI is optional and is not shipped in v1.6.0. If added later, it must consume
+   structured RepoLens data; it must not discover or parse source (ADR-008).
+5. Prefer a modular monolith; do not introduce microservices, Kubernetes, or
+   required databases casually (ADR-001, ADR-005).
+6. Parsing prefers Tree-sitter when natives load (`tree-sitter-seart`); structural
+   fallback is first-class and supported (`structural-fallback`). Tree-sitter is
+   not a v1 hard requirement. Apple Silicon is expected to use fallback with the
+   current seart dependency (ADR-011). Do not vendor multi-arch natives or swap
+   bindings without an ADR.
+7. Keep Spring Boot out of v1 (ADR-005).
 
 ## Backend
 

@@ -305,7 +305,8 @@ public final class RepoLensCli {
                 Notes:
                   - Core analysis works without an LLM.
                   - Web jobs are ephemeral (in-memory).
-                  - Remote URL ingest is not implemented yet.
+                  - CLI ingest/analyze currently accept local repository paths.
+                  - Public GitHub HTTPS ingestion is available through the Web UI and API.
                 """);
     }
 

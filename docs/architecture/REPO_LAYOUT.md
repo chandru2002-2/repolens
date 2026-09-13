@@ -49,7 +49,7 @@ copy of `dist/` into `public/` (see `scripts/package-ui.sh` / CONTRIBUTING).
 |---|---|
 | `docs/adr/` | Architecture Decision Records |
 | `docs/architecture/` | Living notes (language support, this layout) |
-| `AGENTS.md` | Coding-agent / contributor invariants |
+| `docs/qa/` | Historical manual QA snapshots |
 | `CONTRIBUTING.md` | Day-to-day developer workflow |
 | `.github/workflows/ci.yml` | Backend tests, frontend build, Docker build |
 

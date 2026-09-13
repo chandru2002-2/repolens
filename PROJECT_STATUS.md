@@ -1,8 +1,8 @@
 # Project Status
 
-**Date:** 2026-08-13
+**Date:** 2026-09-13
 **Phase:** Interactive Repository Intelligence
-**Version:** `1.6.0`
+**Version:** `1.6.0` (released)
 
 ## Current capabilities
 
@@ -33,7 +33,7 @@
 - Private GitHub repos / non-GitHub hosts
 - Multi-arch bundled Tree-sitter natives
 - Persistent job store
-- AI features
+- AI features (optional explanation port is ADR-008 only; not implemented in v1.6.0)
 - Phase B+ languages (C/C++, Swift, PHP, Ruby, …)
 - Perfect runtime sequence reconstruction (static inference only)
 - Full CFG activity diagrams for arbitrary methods

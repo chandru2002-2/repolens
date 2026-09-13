@@ -1,8 +1,8 @@
 # RepoLens
 
-Open-source **repository intelligence** platform: analyze a codebase into a structured `RepositoryModel`, run analyzers, and explore results through **CLI** and an interactive **Web UI**.
+**v1.6.0** — open-source **repository intelligence** platform: analyze a codebase into a structured `RepositoryModel`, run analyzers, project graphs and diagrams, and explore results through **CLI** and an interactive **Web UI**.
 
-Core analysis is deterministic and works without an LLM.
+Core analysis is deterministic static analysis and works without an LLM. Optional AI explanations are a future capability (ADR-008) and are not part of v1.6.0 analysis.
 
 ## What is RepoLens?
 
@@ -26,13 +26,14 @@ GitHub / local repository
         ↓
    Ingestion
         ↓
- Parsing (Tree-sitter when available, else structural fallback)
+ Language profiles / parser
+ (Tree-sitter when available, else structural fallback)
         ↓
   RepositoryModel
         ↓
     Analyzers
         ↓
- Analysis results / graph
+ Graph / diagram projectors
         ↓
    CLI  ·  Web API  ·  UI
 ```
@@ -51,7 +52,13 @@ Honest capability matrix: [docs/architecture/LANGUAGE_SUPPORT.md](docs/architect
 
 ## Status
 
-Web UI MVP is available: paste a public GitHub URL or local path, analyze, explore the architecture graph.
+**RepoLens v1.6.0** is released.
+
+The **Web UI** accepts a public GitHub HTTPS URL or a local path, runs analysis, and explores architecture, package, class, and specialized diagrams with client-side filters.
+
+The **CLI** (`ingest` / `analyze`) currently accepts **local repository paths**. Public GitHub HTTPS ingestion is available through the Web UI and API (`POST /v1/analyze`).
+
+Remote GitHub clones are cached under `~/.repolens/cache/remotes/{owner}/{repo}` and **reused without fetch/pull** when `.git` already exists. Delete that cache directory to re-clone.
 
 See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 
@@ -62,7 +69,7 @@ See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
 | `repolens-core` | Domain model, ports, analysis pipeline |
 | `repolens-ingest` | Local + allowlisted GitHub clone ingestion |
 | `repolens-parse` | Source → `RepositoryModel` |
-| `repolens-analyzers` | Model-only analyzers + graph projection |
+| `repolens-analyzers` | Model-only analyzers + graph/diagram projection |
 | `repolens-api-model` | Stable v1 JSON DTOs |
 | `repolens-cli` | CLI adapter |
 | `repolens-web` | Javalin API + packaged UI |
@@ -134,7 +141,9 @@ Local and remote ingest apply ADR-010 safety limits (defaults in `IngestLimits`)
 ./gradlew :repolens-cli:run --args='serve --port 8080'
 ```
 
-Open [http://localhost:8080](http://localhost:8080).
+Open [http://localhost:8080](http://localhost:8080). The UI and API can analyze a local path or a public GitHub HTTPS URL.
+
+CLI analysis is local-path-only:
 
 ```bash
 ./gradlew :repolens-cli:run --args='analyze .'

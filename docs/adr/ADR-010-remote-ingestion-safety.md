@@ -9,7 +9,7 @@ Web users will paste remote repository URLs. Unbounded clones create DoS, disk, 
 
 ## Decision
 
-When remote ingestion is implemented, enforce:
+Remote ingestion (public GitHub HTTPS) enforces:
 
 - allowlisted protocols/hosts (initially HTTPS GitHub)
 - max repository size / file count / timeout budgets
@@ -17,7 +17,7 @@ When remote ingestion is implemented, enforce:
 - no execution of repository build scripts during analysis
 - redact/avoid persisting secrets discovered in artifacts by default
 
-Exact numeric limits will be configured at implementation time.
+Exact numeric limits are configured in implementation (`IngestLimits`).
 
 ## Consequences
 
