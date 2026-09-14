@@ -42,6 +42,8 @@ public final class StructuralFactExtractor {
 
             if (lower.endsWith(".java")) {
                 JavaStructuralFactExtractor.extract(sink, path, source);
+            } else if (lower.endsWith(".py")) {
+                PythonStructuralFactExtractor.extract(sink, path, source);
             } else if (DeploymentStructuralFactExtractor.isComposeFile(lower)) {
                 DeploymentStructuralFactExtractor.extractCompose(sink, path, source);
             } else if (lower.endsWith("dockerfile")
