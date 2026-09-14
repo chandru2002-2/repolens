@@ -107,7 +107,73 @@ export type AnalysisResponse = {
   symbols?: SymbolDetail[];
   metadata?: RepositoryMetadata | null;
   diagrams?: DiagramView[];
+  endpoints?: EndpointRecord[];
+  tests?: TestRecord[];
+  traces?: TraceRecord[];
 };
+
+export type SourceLocationRecord = {
+  filePath: string;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+};
+
+export type EvidenceRecord = {
+  inferenceMethod: string;
+  location?: SourceLocationRecord | null;
+  referencedId?: string | null;
+  summary?: string | null;
+};
+
+export type EndpointRecord = {
+  id: string;
+  httpMethod: string;
+  path: string;
+  ownerTypeId?: string | null;
+  handlerMethodId?: string | null;
+  location: SourceLocationRecord;
+  evidence: EvidenceRecord;
+};
+
+export type TestRecord = {
+  id: string;
+  symbolId: string;
+  frameworkHint?: string | null;
+  location: SourceLocationRecord;
+  evidence: EvidenceRecord;
+};
+
+export type TraceHopRecord = {
+  entityId: string;
+  role: string;
+  relationshipId?: string | null;
+  evidence: EvidenceRecord;
+  confidence: number;
+  resolved: boolean;
+};
+
+export type TraceRecord = {
+  id: string;
+  endpointId: string;
+  hops: TraceHopRecord[];
+  confidence: number;
+  unresolved: boolean;
+  inferenceKind: string;
+};
+
+export function analysisEndpoints(result: AnalysisResponse): EndpointRecord[] {
+  return result.endpoints ?? [];
+}
+
+export function analysisTests(result: AnalysisResponse): TestRecord[] {
+  return result.tests ?? [];
+}
+
+export function analysisTraces(result: AnalysisResponse): TraceRecord[] {
+  return result.traces ?? [];
+}
 
 export function oversizedSkipWarning(result: AnalysisResponse): string | null {
   const ingest = result.results.find((item) => item.analyzerId === "ingest");

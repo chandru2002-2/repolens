@@ -21,6 +21,7 @@ import {
 import { DetailsPanel } from "./DetailsPanel";
 import { ExplorerPanel } from "./ExplorerPanel";
 import { GraphFilters } from "./GraphFilters";
+import { IntelligencePanel } from "./IntelligencePanel";
 import {
   DIAGRAM_TABS,
   DEFAULT_GRAPH_FILTERS,
@@ -31,6 +32,7 @@ import {
   type GraphViewMode,
   type Selection,
 } from "./graphModel";
+import { INTELLIGENCE_TABS, type IntelligenceTab } from "./intelligence";
 import { RepositoryGraph } from "./RepositoryGraph";
 import {
   applyResolvedTheme,
@@ -176,6 +178,7 @@ export default function App() {
   const [selection, setSelection] = useState<Selection>(null);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [view, setView] = useState<GraphViewMode>("architecture");
+  const [intelTab, setIntelTab] = useState<IntelligenceTab | null>(null);
   const [filters, setFilters] = useState<GraphFilterState>(DEFAULT_GRAPH_FILTERS);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
@@ -266,6 +269,7 @@ export default function App() {
     setQuery("");
     setSearchOpen(false);
     setView("architecture");
+    setIntelTab(null);
     setFilters(DEFAULT_GRAPH_FILTERS);
   }
 
@@ -279,6 +283,7 @@ export default function App() {
     setFocusId(null);
     setQuery("");
     setSearchOpen(false);
+    setIntelTab(null);
   }
 
   async function onSubmit(event: FormEvent) {
@@ -290,6 +295,7 @@ export default function App() {
     setFocusId(null);
     setQuery("");
     setView("architecture");
+    setIntelTab(null);
     setFilters(DEFAULT_GRAPH_FILTERS);
     setPhase("running");
     try {
@@ -307,11 +313,31 @@ export default function App() {
   function selectNode(id: string) {
     setSelection({ type: "node", id });
     const node = result?.graph.nodes.find((item) => item.id === id);
-    if (node && ["class", "interface", "enum", "type"].includes(node.kind)) {
+    if (
+      intelTab === null &&
+      node &&
+      ["class", "interface", "enum", "type"].includes(node.kind)
+    ) {
       if (view === "architecture" || view === "package") {
         setView("class");
       }
     }
+  }
+
+  function selectEntity(entityId: string) {
+    const node = result?.graph.nodes.find(
+      (item) => item.sourceEntityId === entityId || item.id === entityId,
+    );
+    if (node) {
+      selectNode(node.id);
+    }
+  }
+
+  function showDiagram(next: GraphViewMode) {
+    setView(next);
+    setIntelTab(null);
+    setFocusId(null);
+    setSelection(null);
   }
 
   function applySearchHit(id: string) {
@@ -502,12 +528,23 @@ export default function App() {
                     key={tab.id}
                     type="button"
                     role="tab"
-                    aria-selected={view === tab.id}
-                    className={view === tab.id ? "view-tab active" : "view-tab"}
+                    aria-selected={intelTab === null && view === tab.id}
+                    className={intelTab === null && view === tab.id ? "view-tab active" : "view-tab"}
+                    onClick={() => showDiagram(tab.id)}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+                {INTELLIGENCE_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={intelTab === tab.id}
+                    className={intelTab === tab.id ? "view-tab active" : "view-tab"}
                     onClick={() => {
-                      setView(tab.id);
+                      setIntelTab(tab.id);
                       setFocusId(null);
-                      setSelection(null);
                     }}
                   >
                     {tab.label}
@@ -517,16 +554,14 @@ export default function App() {
                   <span className="sr-only">More diagrams</span>
                   <select
                     className="view-select"
-                    value={isCoreDiagram(view) ? "" : view}
+                    value={intelTab === null && !isCoreDiagram(view) ? view : ""}
                     aria-label="Additional diagrams"
                     onChange={(event) => {
                       const next = event.target.value as GraphViewMode;
                       if (!next) {
                         return;
                       }
-                      setView(next);
-                      setFocusId(null);
-                      setSelection(null);
+                      showDiagram(next);
                     }}
                   >
                     <option value="">More diagrams…</option>
@@ -538,28 +573,34 @@ export default function App() {
                   </select>
                 </label>
               </div>
-              <GraphFilters view={view} filters={filters} onChange={setFilters} />
-              {diagramEmptyMessage ? (
-                <p className="diagram-empty" role="status">
-                  {diagramEmptyMessage}
-                </p>
+              {intelTab ? (
+                <IntelligencePanel result={result} tab={intelTab} onSelectEntity={selectEntity} />
               ) : (
                 <>
-                  {diagramAdvisory ? (
-                    <p className="diagram-truncate" role="status">
-                      {diagramAdvisory}
+                  <GraphFilters view={view} filters={filters} onChange={setFilters} />
+                  {diagramEmptyMessage ? (
+                    <p className="diagram-empty" role="status">
+                      {diagramEmptyMessage}
                     </p>
-                  ) : null}
-                  <RepositoryGraph
-                    nodes={graphNodes}
-                    edges={graphEdges}
-                    view={view}
-                    filters={filters}
-                    selection={selection}
-                    focusId={focusId}
-                    onSelect={setSelection}
-                    theme={resolvedTheme}
-                  />
+                  ) : (
+                    <>
+                      {diagramAdvisory ? (
+                        <p className="diagram-truncate" role="status">
+                          {diagramAdvisory}
+                        </p>
+                      ) : null}
+                      <RepositoryGraph
+                        nodes={graphNodes}
+                        edges={graphEdges}
+                        view={view}
+                        filters={filters}
+                        selection={selection}
+                        focusId={focusId}
+                        onSelect={setSelection}
+                        theme={resolvedTheme}
+                      />
+                    </>
+                  )}
                 </>
               )}
             </section>
@@ -605,7 +646,7 @@ export default function App() {
             </span>
             <span className="sep">|</span>
             <span>
-              View: <strong>{view}</strong>
+              View: <strong>{intelTab ?? view}</strong>
             </span>
             <span className="sep">|</span>
             <span>
