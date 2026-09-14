@@ -4,6 +4,7 @@ import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
 import io.repolens.core.model.Module;
 import io.repolens.core.model.Relationship;
+import io.repolens.core.model.RelationshipType;
 import io.repolens.core.model.RepositoryModel;
 import io.repolens.core.model.Symbol;
 import io.repolens.core.model.SymbolKind;
@@ -26,6 +27,7 @@ import java.util.Set;
  *   <li>all CLASS / INTERFACE / ENUM / TYPE</li>
  *   <li>METHOD / FIELD members capped per parent type</li>
  *   <li>top-level FUNCTION only (no parent), capped at {@link #MAX_TOP_LEVEL_FUNCTIONS}</li>
+ *   <li>endpoints of analyzer {@code TESTS} relationships, even if over the member cap</li>
  * </ul>
  */
 public final class GraphViewProjector {
@@ -56,6 +58,7 @@ public final class GraphViewProjector {
         }
 
         List<Symbol> selected = selectedSymbols(model);
+        includeTestsEndpoints(model, analysisResults, selected);
         for (Symbol symbol : selected) {
             String symbolNodeId = "node:" + symbol.id();
             addNode(
@@ -139,6 +142,34 @@ public final class GraphViewProjector {
                 .toList();
         selected.addAll(topLevelFunctions);
         return selected;
+    }
+
+    /** Adds from/to symbols of analyzer TESTS edges so they can be projected without raising member caps. */
+    private static void includeTestsEndpoints(
+            RepositoryModel model,
+            List<AnalysisResult> analysisResults,
+            List<Symbol> selected
+    ) {
+        Set<String> have = new HashSet<>();
+        for (Symbol symbol : selected) {
+            have.add(symbol.id());
+        }
+        Set<String> needed = new HashSet<>();
+        for (AnalysisResult result : analysisResults) {
+            for (Relationship relationship : result.relationships()) {
+                if (relationship.type() != RelationshipType.TESTS) {
+                    continue;
+                }
+                needed.add(relationship.fromId());
+                needed.add(relationship.toId());
+            }
+        }
+        needed.stream().sorted().forEach(id -> {
+            if (!have.add(id)) {
+                return;
+            }
+            model.findSymbol(id).ifPresent(selected::add);
+        });
     }
 
     private static boolean isTypeSymbol(SymbolKind kind) {

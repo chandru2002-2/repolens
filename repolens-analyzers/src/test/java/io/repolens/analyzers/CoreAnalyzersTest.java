@@ -11,6 +11,8 @@ import io.repolens.core.model.Symbol;
 import io.repolens.core.model.SymbolKind;
 import io.repolens.core.model.AnalysisResult;
 import io.repolens.core.model.GraphView;
+import io.repolens.core.model.Relationship;
+import io.repolens.core.model.RelationshipType;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -258,6 +260,53 @@ class CoreAnalyzersTest {
                         + " summary=" + dependencies.summary());
     }
 
+    @Test
+    void testsAnalyzerEdgesSurviveWhenEndpointsMissMemberCap() {
+        RepositoryModel.Builder builder = RepositoryModel.builder(Repository.local("r1", "tests-graph", "/tmp/tests-graph"))
+                .addFile(new SourceFile("CrowdedTest.java", "java", "h", 10))
+                .addFile(new SourceFile("Prod.java", "java", "h", 10))
+                .addModule(Module.of("module:demo", "demo", "java"))
+                .addSymbol(type("sym:testClass", "CrowdedTest", "CrowdedTest.java"))
+                .addSymbol(type("sym:prod", "Prod", "Prod.java"));
+        for (int i = 0; i < GraphViewProjector.MAX_MEMBERS_PER_TYPE + 1; i++) {
+            builder.addSymbol(method(
+                    "sym:m" + String.format("%02d", i),
+                    "method" + String.format("%02d", i),
+                    "sym:testClass",
+                    "CrowdedTest.java"
+            ));
+        }
+        RepositoryModel model = builder.build();
+        String omittedId = "sym:m" + String.format("%02d", GraphViewProjector.MAX_MEMBERS_PER_TYPE);
+        AnalysisResult tests = new AnalysisResult(
+                "test-subjects",
+                "ok",
+                List.of(),
+                List.of(Relationship.of("tests-rel-1", RelationshipType.TESTS, omittedId, "sym:prod")),
+                List.of()
+        );
+
+        GraphView withoutTests = GraphViewProjector.project(model, List.of());
+        assertFalse(withoutTests.nodes().stream().anyMatch(n -> n.id().equals("node:" + omittedId)));
+        assertFalse(withoutTests.edges().stream().anyMatch(e -> e.type().equals("TESTS")));
+        assertEquals(
+                GraphViewProjector.MAX_MEMBERS_PER_TYPE,
+                withoutTests.nodes().stream().filter(n -> n.kind().equals("method")).count()
+        );
+        assertEquals(0, model.relationships().stream().filter(r -> r.type() == RelationshipType.TESTS).count());
+
+        GraphView graph = GraphViewProjector.project(model, List.of(tests));
+        assertTrue(graph.nodes().stream().anyMatch(n -> n.id().equals("node:" + omittedId)));
+        assertTrue(graph.edges().stream().anyMatch(e ->
+                e.type().equals("TESTS")
+                        && e.fromNodeId().equals("node:" + omittedId)
+                        && e.toNodeId().equals("node:sym:prod")));
+        assertEquals(
+                GraphViewProjector.MAX_MEMBERS_PER_TYPE + 1,
+                graph.nodes().stream().filter(n -> n.kind().equals("method")).count()
+        );
+    }
+
     private static RepositoryModel sampleModel() {
         return RepositoryModel.builder(Repository.local("r1", "sample", "/tmp/sample"))
                 .addFile(new SourceFile("demo/core/Core.java", "java", "h1", 10))
@@ -299,5 +348,17 @@ class CoreAnalyzersTest {
                         SourceLocation.ofFile("demo/app/App.java")
                 ))
                 .build();
+    }
+
+    private static Symbol type(String id, String name, String file) {
+        return new Symbol(
+                id, name, SymbolKind.CLASS, Optional.empty(), Optional.of("module:demo"),
+                SourceLocation.ofFile(file), Optional.empty());
+    }
+
+    private static Symbol method(String id, String name, String parent, String file) {
+        return new Symbol(
+                id, name, SymbolKind.METHOD, Optional.of(parent), Optional.of("module:demo"),
+                SourceLocation.ofFile(file), Optional.empty());
     }
 }
