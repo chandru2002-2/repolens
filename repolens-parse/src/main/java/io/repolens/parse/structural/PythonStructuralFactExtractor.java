@@ -18,8 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Coordinates Python framework endpoint extractors for a single file.
- * Does not emit CALLS or Test facts.
+ * Coordinates Python framework endpoint and test fact extractors for a single file.
+ * Does not emit CALLS.
  */
 public final class PythonStructuralFactExtractor {
 
@@ -33,11 +33,14 @@ public final class PythonStructuralFactExtractor {
     }
 
     public static void extract(StructuralFactSink sink, String path, String source) {
-        if (sink.endpointsFull() || source == null || source.isBlank()) {
+        if (source == null || source.isBlank()) {
             return;
         }
-        FlaskEndpointExtractor.extract(sink, path, source);
-        FastApiEndpointExtractor.extract(sink, path, source);
+        if (!sink.endpointsFull()) {
+            FlaskEndpointExtractor.extract(sink, path, source);
+            FastApiEndpointExtractor.extract(sink, path, source);
+        }
+        PythonTestFactExtractor.extract(sink, path, source);
     }
 
     static void emitEndpoint(
