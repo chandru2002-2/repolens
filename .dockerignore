@@ -8,7 +8,6 @@ build
 node_modules
 repolens-web-ui/node_modules
 repolens-web-ui/dist
-repolens-web-ui
 *.log
 .env
 .env.*

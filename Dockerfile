@@ -2,6 +2,17 @@
 # Build:  podman build -t repolens:local .
 # Run:    podman run --rm -p 8080:8080 repolens:local
 
+# ---- frontend build ----
+FROM node:22-bookworm-slim AS repolens-web-ui-build
+
+WORKDIR /workspace/repolens-web-ui
+
+COPY repolens-web-ui/package.json repolens-web-ui/package-lock.json ./
+RUN npm ci
+
+COPY repolens-web-ui/ ./
+RUN npm run build
+
 # ---- build ----
 FROM eclipse-temurin:21-jdk-jammy AS build
 
@@ -36,8 +47,13 @@ COPY repolens-analyzers ./repolens-analyzers
 COPY repolens-api-model ./repolens-api-model
 COPY repolens-cli ./repolens-cli
 COPY repolens-web ./repolens-web
+RUN rm -rf repolens-web/src/main/resources/public/assets \
+           repolens-web/src/main/resources/public/index.html
+COPY --from=repolens-web-ui-build /workspace/repolens-web-ui/dist/ ./repolens-web/src/main/resources/public/
 
-RUN chmod +x gradlew \
+RUN grep -R -F 'https://github.com/chandru2002-2/repolens' repolens-web/src/main/resources/public \
+    && ! grep -R -F 'https://github.com/octocat/Hello-World' repolens-web/src/main/resources/public \
+    && chmod +x gradlew \
     && ./gradlew --no-daemon :repolens-web:installDist
 
 # ---- runtime ----
