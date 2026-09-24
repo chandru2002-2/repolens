@@ -1,187 +1,194 @@
 # RepoLens
 
-**v1.6.0** — open-source **repository intelligence** platform: analyze a codebase into a structured `RepositoryModel`, run analyzers, project graphs and diagrams, and explore results through **CLI** and an interactive **Web UI**.
+**Repository intelligence engine for understanding unfamiliar codebases through deterministic static analysis.**
 
-Core analysis is deterministic static analysis and works without an LLM. Optional AI explanations are a future capability (ADR-008) and are not part of v1.6.0 analysis.
+[![CI](https://github.com/chandru2002-2/repolens/actions/workflows/ci.yml/badge.svg)](https://github.com/chandru2002-2/repolens/actions/workflows/ci.yml)
+[![Latest Release](https://img.shields.io/github/v/release/chandru2002-2/repolens)](https://github.com/chandru2002-2/repolens/releases)
 
-## What is RepoLens?
+RepoLens turns a repository into a structured `RepositoryModel`, runs analyzers over that model, and exposes the results through a CLI, REST API, and interactive Web UI.
 
-RepoLens helps developers understand unfamiliar codebases through static analysis.
+> **Current release:** `v1.8.0-alpha.1` — Python Intelligence
 
-It provides interactive views of:
+## Why RepoLens?
 
-- Repository architecture
-- Package dependencies
-- Symbols and types
-- Relationships between components
+Understanding an unfamiliar codebase usually requires jumping between files, packages, documentation, APIs, tests, and database models.
 
-## Live Demo
+RepoLens brings those structural relationships into one analyzable model and visual workspace.
 
-**[Open RepoLens Live Demo →](https://repolens-dsce.onrender.com/)**
+### Core capabilities
 
-## Pipeline
+- Repository architecture and package dependency analysis
+- Classes, methods, fields, types, and relationships
+- REST endpoint discovery
+- Test discovery and test-to-subject relationships
+- Static execution traces and impact analysis
+- JPA entity and relationship analysis
+- Interactive architecture and dependency graphs
+- Sequence, ER, DFD, activity, deployment, use-case, and state-machine projections
+- Documentation-aware inspection
+- CLI, REST API, and Web UI
+- Large-repository safety limits and graceful degradation
+- Evidence-backed relationships with confidence levels
 
+## Demo
+
+**[Open the RepoLens Live Demo →](https://repolens-dsce.onrender.com/)**
+
+## Architecture
+
+```text
+GitHub / Local Repository
+          ↓
+      Ingestion
+          ↓
+ Language Analysis
+(Tree-sitter when available,
+ structural fallback otherwise)
+          ↓
+   RepositoryModel
+          ↓
+      Analyzers
+          ↓
+ Graph / Diagram Projections
+          ↓
+ CLI · REST API · Web UI
 ```
-GitHub / local repository
-        ↓
-   Ingestion
-        ↓
- Language profiles / parser
- (Tree-sitter when available, else structural fallback)
-        ↓
-  RepositoryModel
-        ↓
-    Analyzers
-        ↓
- Graph / diagram projectors
-        ↓
-   CLI  ·  Web API  ·  UI
-```
 
-Parsing prefers Tree-sitter (`Parse engine: tree-sitter-seart`) when natives load; otherwise
-uses first-class structural fallback (`Parse engine: structural-fallback`). With the current
-dependency, Apple Silicon typically runs fallback. Tree-sitter is not required for v1.
-Details: [ADR-003](docs/adr/ADR-003-parsing-tree-sitter-language-profiles.md),
-[ADR-011](docs/adr/ADR-011-optional-tree-sitter-first-class-fallback.md).
+The core analysis is deterministic and does not require an LLM. AI explanations are planned separately and are not required for repository analysis.
 
 ## Language support
 
-Structural profiles (PARTIAL): Java, JavaScript, TypeScript, Python, Go, Rust, C#, Kotlin.
+Current structural profiles include:
 
-Honest capability matrix: [docs/architecture/LANGUAGE_SUPPORT.md](docs/architecture/LANGUAGE_SUPPORT.md).
-
-## Status
-
-**RepoLens v1.6.0** is released.
-
-The **Web UI** accepts a public GitHub HTTPS URL or a local path, runs analysis, and explores architecture, package, class, and specialized diagrams with client-side filters.
-
-The **CLI** (`ingest` / `analyze`) currently accepts **local repository paths**. Public GitHub HTTPS ingestion is available through the Web UI and API (`POST /v1/analyze`).
-
-Remote GitHub clones are cached under `~/.repolens/cache/remotes/{owner}/{repo}` and **reused without fetch/pull** when `.git` already exists. Delete that cache directory to re-clone.
-
-See [PROJECT_STATUS.md](PROJECT_STATUS.md) and [ROADMAP.md](ROADMAP.md).
-
-## Modules
-
-| Module | Role |
+| Language | Support |
 |---|---|
-| `repolens-core` | Domain model, ports, analysis pipeline |
-| `repolens-ingest` | Local + allowlisted GitHub clone ingestion |
-| `repolens-parse` | Source → `RepositoryModel` |
-| `repolens-analyzers` | Model-only analyzers + graph/diagram projection |
-| `repolens-api-model` | Stable v1 JSON DTOs |
-| `repolens-cli` | CLI adapter |
-| `repolens-web` | Javalin API + packaged UI |
-| `repolens-web-ui` | Vite/React frontend source (npm; not a Gradle module) |
+| Java | Structural analysis |
+| JavaScript | Structural profile |
+| TypeScript | Structural profile |
+| Python | Structural analysis |
+| Go | Structural profile |
+| Rust | Structural profile |
+| C# | Structural profile |
+| Kotlin | Structural profile |
 
-Layout details: [docs/architecture/REPO_LAYOUT.md](docs/architecture/REPO_LAYOUT.md). Docs index: [docs/README.md](docs/README.md).
+See the [language support matrix](docs/architecture/LANGUAGE_SUPPORT.md) for the current capability details.
+
+## Intelligence and traceability
+
+RepoLens v1.7+ extends structural analysis into repository intelligence:
+
+- HTTP endpoint facts
+- Java and Python test discovery
+- Test-to-subject relationship inference
+- Static execution trace composition
+- Entity impact analysis
+- Evidence and inference provenance
+- Confidence-aware relationships
+- Runtime/static distinctions in CLI output
+
+The design keeps repository facts as the canonical source of truth and avoids inventing relationships when sufficient evidence is unavailable.
+
+## Interactive diagrams
+
+Available projections include:
+
+- **Architecture** — repository and package/module layout
+- **Package** — package-to-package dependencies
+- **Class** — classes, interfaces, inheritance, and implementation
+- **Sequence** — evidence-backed static call relationships
+- **ER** — JPA entities and annotated associations
+- **DFD** — API processes, services, and data stores
+- **Activity** — simplified method-level activity summaries
+- **Deployment** — Docker, Compose, Kubernetes, and datasource hints
+- **Use Case** — operations inferred from REST mappings/controllers
+- **State Machine** — evidence-backed status transitions
+
+Large graphs are capped with explicit truncation information rather than silently dropping context.
+
+## Project structure
+
+| Module | Responsibility |
+|---|---|
+| `repolens-core` | Domain model, ports, and analysis pipeline |
+| `repolens-ingest` | Local and GitHub repository ingestion |
+| `repolens-parse` | Source code → RepositoryModel |
+| `repolens-analyzers` | Analysis and graph/diagram projection |
+| `repolens-api-model` | Stable API DTOs |
+| `repolens-cli` | CLI interface |
+| `repolens-web` | Javalin API and packaged UI |
+| `repolens-web-ui` | React/Vite frontend |
 
 ## Requirements
 
 - Java 21+
-- Git (for remote GitHub clone)
-- Node.js 20+ (only to rebuild the UI)
-
-## Interactive Diagrams
-
-### Available
-
-- **Architecture** — repository and package/module layout with package dependencies
-- **Package** — package-to-package dependency diagram
-- **Class** — classes/interfaces with inheritance (`extends`) / implementation (`implements`) when present
-- **Sequence** — inferred controller / service / repository roles plus evidence-backed CALLS (static; confidence-tagged)
-- **ER** — JPA `@Entity` models and association cardinality when annotated (`mappedBy` / `@JoinColumn` captured in detail when present)
-- **DFD** — data-flow sketch from API processes, services, and data stores
-- **Activity** — simplified per-method activity summary (calls / decisions / end); not a full CFG
-- **Deployment** — Docker Compose / Dockerfile / Kubernetes / datasource hints; Compose links only from `depends_on`
-- **Use Case** — user-facing operations inferred from REST mappings / controllers (class + method path combine when present)
-- **State Machine** — enum/status states; transitions only from assignment/return/transition-call evidence (not enum or switch order)
-
-Core views (Architecture / Package / Class) filter the primary graph. Specialized diagrams are separate projections from deterministic structural facts. Empty diagrams show an explanatory message instead of inventing relationships. Large graphs are capped (node/edge limits) with a truncation notice.
-
-CALLS confidence (static analysis):
-
-- **high** — field / constructor / setter-typed receiver, or static `Type.method`
-- **medium** — capitalized receiver name matches a known type
-- Relationships below the emit threshold are omitted rather than guessed
-
-Graph filtering (client-side only — no re-analysis):
-
-- Toggle packages, classes, interfaces, enums, methods, and fields (core views)
-- Toggle relationship types (`Depends on`, `Extends`, `Implements`, `Contains`)
-- Name search across the active diagram
-
-Documentation-aware inspection:
-
-- Deterministic extraction from `README.md` / README files and `docs/**/*.md`
-- Inspector shows matched excerpts only when a class, package, or similar entity is explicitly referenced
-- Documentation is supplemental context, never the source of truth for structure
-
-Repository information (Explorer):
-
-- Optional metadata such as owner, size, branch, and last commit
-- Local repos: size from inventoried analysis files; Git history when available (`First commit` is labeled distinctly from GitHub `Created`)
-- Public GitHub repos: GitHub API metadata when reachable (no auth); analysis continues if metadata fetch fails
-
-Large-file handling: files over the default **5 MB** `maxFileBytes` limit are skipped with a non-blocking warning; analysis continues.
-
-## Ingestion safety limits
-
-Local and remote ingest apply ADR-010 safety limits (defaults in `IngestLimits`):
-
-- **maxFileBytes** — 5 MB per file. Oversized files are **skipped** (not fatal); analysis continues and the result includes an `ingest` warning such as “Skipped 1 file exceeding the 5 MB file-size limit.”
-- **maxTotalBytes** / **maxFileCount** / **maxDepth** — repository-wide caps (still fail the job if exceeded)
-- Common binary/media extensions under the size limit are omitted from the analysis inventory so they do not enter source parsing
+- Git
+- Node.js 20+ for rebuilding the Web UI
 
 ## Quick start
 
+Run the test suite:
+
 ```bash
 ./gradlew test
+```
+
+Start the Web UI:
+
+```bash
 ./gradlew :repolens-cli:run --args='serve --port 8080'
 ```
 
-Open [http://localhost:8080](http://localhost:8080). The UI and API can analyze a local path or a public GitHub HTTPS URL.
+Then open:
 
-CLI analysis is local-path-only:
+```text
+http://localhost:8080
+```
+
+Analyze a local repository:
 
 ```bash
 ./gradlew :repolens-cli:run --args='analyze .'
+```
+
+JSON output:
+
+```bash
 ./gradlew :repolens-cli:run --args='analyze . --json'
 ```
 
-### Rebuild UI
-
-```bash
-./scripts/package-ui.sh
-```
-
-Or manually:
-
-```bash
-cd repolens-web-ui && npm install && npm test && npm run build
-rm -rf ../repolens-web/src/main/resources/public
-mkdir -p ../repolens-web/src/main/resources/public
-cp -R dist/. ../repolens-web/src/main/resources/public/
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the full developer workflow.
-
 ## Continuous Integration
 
-GitHub Actions (`.github/workflows/ci.yml`) runs on pushes and pull requests to `main`. It automatically:
+GitHub Actions runs on pushes and pull requests to `main` and validates:
 
-- runs backend tests with `./gradlew test` (Java 21)
-- installs, tests, and builds the frontend in `repolens-web-ui` (`npm ci` / `npm test` / `npm run build`)
-- validates that the existing `Dockerfile` builds successfully (image is not pushed)
+- Backend tests with Java 21
+- Frontend installation, tests, and production build
+- Docker image build validation
 
-## Architecture decisions
+## Documentation
 
-See [docs/](docs/README.md) and [docs/adr/](docs/adr/).
+- [Documentation index](docs/README.md)
+- [Project status](PROJECT_STATUS.md)
+- [Roadmap](ROADMAP.md)
+- [Architecture Decision Records](docs/adr/)
+- [Contributing guide](CONTRIBUTING.md)
 
-## License
+## Safety and analysis limits
 
-Project license TBD (MIT vs Apache-2.0). Dependency/grammar policy: [ADR-009](docs/adr/ADR-009-licensing-grammar-policy.md).
+RepoLens applies explicit ingestion limits so large or problematic repositories do not silently produce unreliable results.
+
+Examples include:
+
+- 5 MB default per-file limit
+- Repository-wide file-count, size, and depth limits
+- Binary/media exclusion
+- Non-blocking warnings for skipped oversized files
+- Confidence-aware relationship inference
+
+## Project status
+
+RepoLens is under active development. Releases are published as functionality is added and validated.
+
+The repository currently does **not declare a software license**. A license should be added before describing the project as licensed for redistribution.
 
 ## Author
 
@@ -189,6 +196,4 @@ Project license TBD (MIT vs Apache-2.0). Dependency/grammar policy: [ADR-009](do
 
 Java Backend Developer · Spring Boot · Repository Intelligence
 
-GitHub: https://github.com/chandru2002-2
-
-© 2026 Chandru M · RepoLens
+[GitHub](https://github.com/chandru2002-2)
