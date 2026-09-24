@@ -169,7 +169,7 @@ function AnalyzeForm({
 }
 
 export default function App() {
-  const [source, setSource] = useState("https://github.com/octocat/Hello-World");
+  const [source, setSource] = useState("https://github.com/chandru2002-2/repolens");
   const [phase, setPhase] = useState<AppPhase>("landing");
   const [entry, setEntry] = useState<"landing" | "compose">("landing");
   const [status, setStatus] = useState<JobStatus | null>(null);
