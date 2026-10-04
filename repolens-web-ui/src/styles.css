@@ -289,6 +289,25 @@ input {
   letter-spacing: 0.03em;
 }
 
+.landing-intro {
+  margin-top: 0.8rem;
+}
+
+.landing-intro h2 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.landing-intro p {
+  margin: 0.4rem 0 0;
+  color: var(--ink-2);
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
 .landing .analyze-form,
 .compose .analyze-form {
   margin-top: 1.15rem;

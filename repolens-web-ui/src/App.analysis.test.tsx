@@ -83,6 +83,8 @@ describe("landing analysis", () => {
     expect(screen.getByText("Enter a GitHub repository URL.")).toBeTruthy();
     expect(startAnalysis).not.toHaveBeenCalled();
     expect(screen.getByRole("heading", { name: "Analyze a repository" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Understand unfamiliar codebases" })).toBeTruthy();
+    expect(screen.getByText(/architecture, dependencies, REST APIs, database entities/)).toBeTruthy();
   });
 
   it("rejects an invalid URL", () => {
