@@ -804,6 +804,15 @@ export default function App() {
       ) : surface === "form" ? (
         <main className={entry === "landing" ? "landing" : "compose"}>
           <h1 className="landing-title">Analyze a repository</h1>
+          {entry === "landing" ? (
+            <section className="landing-intro" aria-labelledby="landing-intro-title">
+              <h2 id="landing-intro-title">Understand unfamiliar codebases</h2>
+              <p>
+                RepoLens analyzes GitHub repositories to map software architecture, dependencies, REST APIs,
+                database entities, classes, and code relationships in interactive diagrams.
+              </p>
+            </section>
+          ) : null}
           <AnalyzeForm
             source={source}
             onSourceChange={(value) => {
