@@ -85,9 +85,13 @@ public final class AnalysisJob {
         this.updatedAt = Instant.now();
     }
 
-    public synchronized void markRunning() {
-        this.status = JobStatus.RUNNING;
+    public synchronized boolean markRunning() {
+        if (status != JobStatus.QUEUED) {
+            return false;
+        }
         this.updatedAt = Instant.now();
+        this.status = JobStatus.RUNNING;
+        return true;
     }
 
     public synchronized void markCompleted(AnalysisResponseDto result) {
@@ -95,17 +99,17 @@ public final class AnalysisJob {
     }
 
     public synchronized void markCompleted(AnalysisResponseDto result, RepositoryModel model, List<Trace> traces) {
-        this.status = JobStatus.COMPLETED;
         this.result = Objects.requireNonNull(result, "result");
         this.model = model;
         this.traces = traces == null ? List.of() : List.copyOf(traces);
         this.error = null;
         this.updatedAt = Instant.now();
+        this.status = JobStatus.COMPLETED;
     }
 
     public synchronized void markFailed(String error) {
-        this.status = JobStatus.FAILED;
         this.error = Objects.requireNonNull(error, "error");
         this.updatedAt = Instant.now();
+        this.status = JobStatus.FAILED;
     }
 }

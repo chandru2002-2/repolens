@@ -27,4 +27,14 @@ public record IngestLimits(
             throw new IllegalArgumentException("maxDepth must be > 0");
         }
     }
+
+    /** Allows bounded room for shallow Git metadata while limiting clone disk use. */
+    public long maxCloneBytes() {
+        return maxTotalBytes > Long.MAX_VALUE / 2 ? Long.MAX_VALUE : maxTotalBytes * 2;
+    }
+
+    /** Allows room for Git metadata while bounding checked-out filesystem entries. */
+    public int maxCloneEntryCount() {
+        return maxFileCount > Integer.MAX_VALUE / 2 ? Integer.MAX_VALUE : maxFileCount * 2;
+    }
 }

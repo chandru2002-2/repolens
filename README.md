@@ -335,7 +335,7 @@ The CLI and Web layers remain adapters around the analysis engine rather than ow
 
 ## Requirements
 
-* Java 21+
+* JDK 21
 * Git
 * Node.js 20+ for Web UI development
 
@@ -436,12 +436,17 @@ repolens/
 │
 ├── repolens-core/
 │   └── Domain model and core contracts
+├── repolens-ingest/
+│   └── Local and supported remote repository ingestion
 │
 ├── repolens-parse/
 │   └── Language parsing and structural extraction
 │
-├── repolens-analyze/
-│   └── Repository analysis
+├── repolens-analyzers/
+│   └── Repository analysis and graph/diagram projections
+│
+├── repolens-api-model/
+│   └── API DTOs and response mapping
 │
 ├── repolens-cli/
 │   └── Command-line interface

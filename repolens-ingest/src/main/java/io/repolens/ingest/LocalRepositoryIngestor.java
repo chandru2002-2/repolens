@@ -10,6 +10,7 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,7 +33,7 @@ public final class LocalRepositoryIngestor implements RepositoryIngestor {
     }
 
     public LocalRepositoryIngestor(IngestLimits limits) {
-        this(limits, defaultRemoteWorkspace(), new GitRemoteCloner());
+        this(limits, defaultRemoteWorkspace(), new GitRemoteCloner(Duration.ofMinutes(2), limits));
     }
 
     public LocalRepositoryIngestor(IngestLimits limits, Path remoteWorkspace, GitRemoteCloner remoteCloner) {

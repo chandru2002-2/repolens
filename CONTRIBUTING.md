@@ -16,7 +16,7 @@ This guide explains how to set up the project, understand its architecture, make
 
 You will need:
 
-* **Java 21+**
+* **JDK 21**
 * **Git**
 * **Node.js 20+** when working on or packaging the Web UI
 
@@ -41,17 +41,19 @@ If the tests pass, you are ready to start contributing.
 
 RepoLens is organized as a modular monolith.
 
-| Path                 | Purpose                                    |
-| -------------------- | ------------------------------------------ |
-| `repolens-core/`     | Domain model and core contracts            |
-| `repolens-parse/`    | Language parsing and structural extraction |
-| `repolens-analyze/`  | Repository analysis                        |
-| `repolens-cli/`      | Command-line interface                     |
-| `repolens-web/`      | Web API and packaged UI                    |
-| `repolens-web-ui/`   | React/Vite Web UI source                   |
-| `docs/adr/`          | Architecture Decision Records              |
-| `docs/architecture/` | Living architecture documentation          |
-| `scripts/`           | Development and packaging scripts          |
+| Path                  | Purpose                                      |
+| --------------------- | -------------------------------------------- |
+| `repolens-core/`      | Domain model and core contracts              |
+| `repolens-ingest/`    | Local and supported remote repository ingest |
+| `repolens-parse/`     | Language parsing and structural extraction   |
+| `repolens-analyzers/` | Repository analysis and graph projections    |
+| `repolens-api-model/` | API DTOs and response mapping                |
+| `repolens-cli/`       | Command-line interface                       |
+| `repolens-web/`       | Web API and packaged UI                      |
+| `repolens-web-ui/`    | React/Vite Web UI source                     |
+| `docs/adr/`           | Architecture Decision Records                |
+| `docs/architecture/`  | Living architecture documentation            |
+| `scripts/`            | Development and packaging scripts            |
 
 ### Keep the boundaries intact
 

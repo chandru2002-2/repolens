@@ -29,7 +29,6 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -193,7 +192,7 @@ class IntelligenceApiServerTest {
     }
 
     private RepoLensServer start(int port, AnalysisRunner runner) {
-        AnalysisJobService service = new AnalysisJobService(runner, new InMemoryJobStore(), Executors.newSingleThreadExecutor());
+        AnalysisJobService service = new AnalysisJobService(runner, new InMemoryJobStore());
         RepoLensServer server = new RepoLensServer(port, service, new ObjectMapper());
         server.start();
         return server;

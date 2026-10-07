@@ -68,6 +68,8 @@ public final class RepoLensServer implements AutoCloseable {
             try {
                 AnalysisJob job = jobService.submit(request.source(), request.remote());
                 ctx.status(HttpStatus.ACCEPTED).json(jobService.toDto(job));
+            } catch (AnalysisJobService.CapacityExceededException ex) {
+                ctx.status(429).json(Map.of("error", "analysis capacity is full; retry later"));
             } catch (IllegalArgumentException ex) {
                 ctx.status(HttpStatus.BAD_REQUEST).json(Map.of("error", ex.getMessage()));
             }

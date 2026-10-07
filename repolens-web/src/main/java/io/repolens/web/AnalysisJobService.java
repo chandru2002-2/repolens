@@ -22,8 +22,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Orchestrates async analysis jobs over RepoLens Core.
@@ -32,16 +37,42 @@ public final class AnalysisJobService implements AutoCloseable {
 
     private final AnalysisRunner analysisRunner;
     private final InMemoryJobStore store;
-    private final ExecutorService executor;
+    private final ThreadPoolExecutor executor;
+    private final ScheduledExecutorService cleanupExecutor;
+    private final AnalysisJobLimits limits;
+    private final Semaphore admission;
 
     public AnalysisJobService(AnalysisRunner analysisRunner, InMemoryJobStore store) {
-        this(analysisRunner, store, Executors.newFixedThreadPool(Math.max(2, Runtime.getRuntime().availableProcessors() / 2)));
+        this(analysisRunner, store, store.limits());
     }
 
-    public AnalysisJobService(AnalysisRunner analysisRunner, InMemoryJobStore store, ExecutorService executor) {
+    AnalysisJobService(AnalysisRunner analysisRunner, InMemoryJobStore store, AnalysisJobLimits limits) {
         this.analysisRunner = Objects.requireNonNull(analysisRunner, "analysisRunner");
         this.store = Objects.requireNonNull(store, "store");
-        this.executor = Objects.requireNonNull(executor, "executor");
+        this.limits = Objects.requireNonNull(limits, "limits");
+        if (!store.limits().equals(limits)) {
+            throw new IllegalArgumentException("Job service and store limits must match");
+        }
+        this.executor = new ThreadPoolExecutor(
+                limits.maxConcurrentJobs(),
+                limits.maxConcurrentJobs(),
+                0L,
+                TimeUnit.MILLISECONDS,
+                new ArrayBlockingQueue<>(limits.maxQueuedJobs()),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+        this.admission = new Semaphore(limits.maxConcurrentJobs() + limits.maxQueuedJobs(), true);
+        this.cleanupExecutor = newCleanupExecutor();
+        long cleanupSeconds = Math.max(1L, Math.min(60L, limits.retention().toSeconds() / 4L));
+        cleanupExecutor.scheduleAtFixedRate(store::cleanup, cleanupSeconds, cleanupSeconds, TimeUnit.SECONDS);
+    }
+
+    private static ScheduledExecutorService newCleanupExecutor() {
+        return Executors.newSingleThreadScheduledExecutor(task -> {
+            Thread thread = new Thread(task, "repolens-job-retention");
+            thread.setDaemon(true);
+            return thread;
+        });
     }
 
     public AnalysisJob submit(String source, boolean remote) {
@@ -49,10 +80,31 @@ public final class AnalysisJobService implements AutoCloseable {
             throw new IllegalArgumentException("source must not be blank");
         }
         boolean effectiveRemote = remote || source.trim().startsWith("https://") || source.trim().startsWith("git@");
+        if (!admission.tryAcquire()) {
+            throw new CapacityExceededException();
+        }
         AnalysisJob job = new AnalysisJob(UUID.randomUUID().toString(), source.trim(), effectiveRemote);
-        store.save(job);
-        executor.execute(() -> runJob(job));
-        return job;
+        boolean stored = false;
+        try {
+            if (!store.save(job)) {
+                throw new CapacityExceededException();
+            }
+            stored = true;
+            executor.execute(new AnalysisTask(job));
+            return job;
+        } catch (RejectedExecutionException ex) {
+            if (stored) {
+                store.remove(job.id());
+            }
+            admission.release();
+            throw new CapacityExceededException();
+        } catch (RuntimeException ex) {
+            if (stored) {
+                store.remove(job.id());
+            }
+            admission.release();
+            throw ex;
+        }
     }
 
     public Optional<AnalysisJob> find(String id) {
@@ -74,13 +126,23 @@ public final class AnalysisJobService implements AutoCloseable {
     }
 
     private void runJob(AnalysisJob job) {
-        job.markRunning();
+        if (Thread.currentThread().isInterrupted()) {
+            job.markFailed("Analysis stopped before execution");
+            admission.release();
+            return;
+        }
+        if (!job.markRunning()) {
+            admission.release();
+            return;
+        }
         AnalysisProgressTracker tracker = new AnalysisProgressTracker(job::updateProgress);
         try {
             AnalysisProgress.use(tracker, () -> runTracked(job, tracker));
         } catch (Exception ex) {
             job.markFailed(UserFacingErrors.sanitize(
                     ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage()));
+        } finally {
+            admission.release();
         }
     }
 
@@ -100,7 +162,12 @@ public final class AnalysisJobService implements AutoCloseable {
 
     @Override
     public void close() {
-        executor.shutdownNow();
+        cleanupExecutor.shutdownNow();
+        for (Runnable pending : executor.shutdownNow()) {
+            if (pending instanceof AnalysisTask task) {
+                task.cancelBeforeStart();
+            }
+        }
     }
 
     public Optional<AnalysisResponseDto.ImpactDto> impactFor(AnalysisJob job, String entityId) {
@@ -127,5 +194,31 @@ public final class AnalysisJobService implements AutoCloseable {
             return true;
         }
         return model.tests().stream().anyMatch(test -> test.symbolId().equals(entityId));
+    }
+
+    private final class AnalysisTask implements Runnable {
+        private final AnalysisJob job;
+
+        private AnalysisTask(AnalysisJob job) {
+            this.job = job;
+        }
+
+        @Override
+        public void run() {
+            runJob(job);
+        }
+
+        private void cancelBeforeStart() {
+            job.markFailed("Analysis stopped before execution");
+            admission.release();
+        }
+    }
+
+    public static final class CapacityExceededException extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        private CapacityExceededException() {
+            super("Analysis capacity is full");
+        }
     }
 }

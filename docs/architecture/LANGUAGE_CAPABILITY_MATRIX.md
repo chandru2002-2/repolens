@@ -1,7 +1,7 @@
 # Language Capability Matrix (Intelligence)
 
-**Status:** Proposed for v1.8 (not a claim of shipped multi-language intelligence)
-**Date:** 2026-09-14
+**Current status:** RepoLens `v1.9.0`
+**Historical baseline:** Original v1.8 QA and proposal, dated 2026-09-14
 **Complements:** [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md) (structural coverage)
 **Architecture:** [V1.8_MULTILANGUAGE_INTELLIGENCE_SPEC.md](V1.8_MULTILANGUAGE_INTELLIGENCE_SPEC.md),
 [ADR-013](../adr/ADR-013-multi-language-intelligence-architecture.md)
@@ -14,7 +14,6 @@ Empty intelligence collections mean **no evidence was extracted**, not **the
 runtime has no routes or tests**. Do not represent unsupported/unknown
 intelligence as an invented absence of facts.
 
----
 
 ## 1. Levels
 
@@ -33,22 +32,39 @@ intelligence as an invented absence of facts.
 | **I0** | No Endpoint/Test extractors for this stack | Empty; composers have nothing to attach |
 | **I1** | Endpoint and/or Test facts from declarations / documented test patterns | TESTS/traces only if CALLS/IMPORTS already exist |
 | **I2** | I1 plus CALLS (or equivalent) enough for some static traces | Composers run unchanged |
-| **I3** | Java/Spring-class depth (Spring mappings, JUnit, CALLS, traces) | Current v1.7 Java/Spring bar |
+| **I3** | Java/Spring-class depth (Spring mappings, Java tests, CALLS, traces) | Current v1.9 Java/Spring capability bar |
 
 I0 is a **capability**, not a failed analysis.
 
----
+## Current v1.9 status
 
-## 2. Summary (post–v1.7 QA)
+All eight language profiles provide **PARTIAL** structural support. None is a complete language implementation. Intelligence levels below describe available extractor facts, not guaranteed framework coverage.
 
-Structural column is current product behavior. Intelligence column is **QA
-result today** plus **v1.8 target** (not implemented by these docs).
+| Language / stack | Structure | v1.9 intelligence | Current evidence and limits |
+|------------------|-----------|-------------------|-----------------------------|
+| Java / Spring | PARTIAL | **I3** | Selected Spring endpoint facts, Java test facts, and heuristic Java CALLS; TESTS, traces, and impact are composed where evidence resolves. |
+| Java without Spring | PARTIAL | **I1-I2, varies** | Java test and CALLS facts may be available; endpoint facts require recognized Spring mappings. |
+| Python / Flask and FastAPI | PARTIAL | **I1** | Selected Flask route and FastAPI decorator endpoint facts, plus supported Python test patterns. Python CALLS are not extracted; downstream links and traces depend on resolvable available relationships. |
+| JavaScript | PARTIAL | **I0** | Structural profile only; no current endpoint or test extractor. |
+| TypeScript / NestJS | PARTIAL | **I0** | Structural profile only; no current NestJS endpoint or TypeScript test extractor. |
+| C# / ASP.NET Core | PARTIAL | **I0** | Structural profile only; no current endpoint or test extractor. |
+| Go / Gin | PARTIAL | **I0** | Structural profile only; no current endpoint or test extractor. |
+| Rust / Axum | PARTIAL | **I0** | Structural profile only; no current endpoint or test extractor. |
+| Kotlin / Spring or Ktor | PARTIAL | **I0** | Structural profile only; no current endpoint or test extractor. |
+| Unsupported languages | UNSUPPORTED | **I0** | No language profile; files may still be inventoried. |
 
-| Language / stack | Structure today | Intelligence today (QA) | v1.8 target | Notes |
+`TESTS`, Trace, and Impact remain evidence-derived and language-agnostic. Empty results do not prove that a repository has no routes or tests. Java is currently the only profile that emits CALLS; Python facts therefore do not imply call traces.
+
+
+## Historical v1.8 QA summary (2026-09-14)
+
+Historical v1.8 QA results and proposal targets as of 2026-09-14; these values do not describe v1.9.
+
+| Language / stack | Structure in snapshot | Intelligence in snapshot (QA) | v1.8 target at publication | Notes |
 |------------------|-----------------|-------------------------|-------------|-------|
 | Java / Spring | PARTIAL | **I3** — Endpoint, Test, TESTS, Trace working | **Tier 1** — maintain I3 | Non-regression baseline |
 | Java (no Spring) | PARTIAL | Tests possible; endpoints empty unless mappings exist | Maintain | Honest empty endpoints |
-| Python / Flask | PARTIAL | **I0** (intelligence 0) | **Tier 2A → I1+** | Structure working; no Flask extractor yet |
+| Python / Flask | PARTIAL | **I0** | **Tier 2A → I1+** | No Flask endpoint extractor had shipped at that snapshot |
 | Python / FastAPI | PARTIAL | **I0** | **Tier 2A → I1+** | Same Python profile; distinct extractor |
 | TypeScript / NestJS | PARTIAL | **I0** | **Tier 2A → I1+** | TS structure; no Nest extractor yet |
 | JavaScript (generic) | PARTIAL | **I0** | Not 2A unless facts exist | No invented Express/Next routes |
@@ -60,14 +76,15 @@ result today** plus **v1.8 target** (not implemented by these docs).
 | Kotlin / Spring or Ktor | PARTIAL | **I0** | **Tier 2B → I1+** | After 2A; Spring-like vs Ktor extractors |
 | Unsupported languages | UNSUPPORTED | **I0** | Stay I0 | Inventory only |
 
----
 
 ## 3. Intelligence dimensions
+
+The following table records the v1.8 QA snapshot, not current v1.9 capability.
 
 Consumers (API/CLI/Web) already expose these collections. Fill only from
 canonical facts and composers.
 
-| Dimension | Java/Spring today | 2A/2B until extractors exist |
+| Dimension | Java/Spring in snapshot | Other 2A/2B stacks in snapshot |
 |-----------|-------------------|------------------------------|
 | Endpoint facts | Yes (Spring mappings) | Empty |
 | Test facts | Yes (JUnit + name/file) | Empty |
@@ -76,12 +93,16 @@ canonical facts and composers.
 | Impact | Derived from model + traces | Empty categories without evidence |
 | Graph `TESTS` edges | Projected from analyzer when nodes exist | None |
 
-Downstream composers **do not** gain Python/Go/TS modes. They stay empty until
-extractors emit facts.
+In that snapshot, downstream composers had no Python/Go/TypeScript extractor
+facts to consume. See the current v1.9 table above for the later Python
+extractors.
 
----
 
-## 4. Framework extraction (planned, not shipped)
+## Historical v1.8 framework extraction plan
+
+These were proposed targets at publication time, not a record of current
+support. Flask and FastAPI now have limited endpoint extractors; see the current
+v1.9 table.
 
 | Stack | Typical declarations (extractor input) | Must not treat as enough |
 |-------|----------------------------------------|---------------------------|
@@ -97,9 +118,12 @@ extractors emit facts.
 Omit multi-path/multi-method mappings that cannot be one `Endpoint` without
 inventing cardinality (same rule as v1.7 Spring).
 
----
 
-## 5. Test discovery (planned, not shipped except Java)
+## Historical v1.8 test discovery plan
+
+At publication time, Java was the only language with test extraction. The
+Python patterns below were proposed scope; supported Python patterns now emit
+test facts.
 
 | Language | Fact signals | Subject linking |
 |----------|--------------|-----------------|
@@ -114,24 +138,27 @@ inventing cardinality (same rule as v1.7 Spring).
 Name/file patterns produce Test **facts** with `NAME_HEURISTIC` evidence. They
 must not create subject edges by name (`FooTest` ↛ `Foo`).
 
----
 
-## 6. How to read empty results
+## Historical v1.8 empty-result examples
 
 | Situation | Honest reading |
 |-----------|----------------|
 | Spring app, extractor ran, `endpoints: []` | No matching mapping facts (possible incomplete coverage) |
-| Flask app today, `endpoints: []` | **I0** — extractor not shipped; not proof of zero routes |
-| Go repo with Gin, traces empty after 2A endpoints-only slice | **I1** — traces need CALLS; not a composer bug |
+| Flask app in the v1.8 QA snapshot, `endpoints: []` | **I0 at that time** — extractor not shipped; not proof of zero routes |
+| Proposed Go/Gin endpoints-only slice with no CALLS | **I1** — traces need CALLS; this was a planned example, not current Go support |
 | Unsupported language | Structure may be inventory-only; intelligence empty |
 
 UI/CLI empty states should stay valid. They must not say “no APIs exist.”
 
----
 
-## 7. Maintenance
+## Planned improvements
 
-- Update **this file** when an intelligence extractor ships (I0 → I1/I2).
-- Update **LANGUAGE_SUPPORT.md** only for structural parser/profile changes
-  (separate document; not modified by v1.8 architecture publication).
-- Never mark a language FULL intelligence because structure works.
+- Extend evidence-backed endpoint and test extraction from the current Java/Python patterns to the prioritized stacks in [ADR-013](../adr/ADR-013-multi-language-intelligence-architecture.md): TypeScript/NestJS, C#/ASP.NET Core, and Go/Gin, followed by Rust/Axum and Kotlin/Spring or Ktor.
+- Improve relationship and test-subject resolution only where existing facts support it; do not imply language parity or compiler-level analysis.
+
+## Maintenance
+
+- Keep the current v1.9 section in sync when an extractor ships.
+- Keep historical v1.8 QA values labeled with their snapshot date.
+- Update [LANGUAGE_SUPPORT.md](LANGUAGE_SUPPORT.md) for structural parser/profile changes; this matrix tracks intelligence separately.
+- Never mark a language FULL for intelligence merely because structural parsing works.

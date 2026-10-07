@@ -71,6 +71,7 @@ RUN groupadd --system repolens \
 WORKDIR /app
 
 COPY --from=build /workspace/repolens-web/build/install/repolens-web /app
+COPY LICENSE /app/LICENSE
 
 RUN chown -R repolens:repolens /app
 

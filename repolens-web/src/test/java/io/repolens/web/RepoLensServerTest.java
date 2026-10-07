@@ -18,7 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,7 +46,7 @@ class RepoLensServerTest {
         };
 
         int port = 18080 + (int) (Math.abs(System.nanoTime()) % 1000);
-        AnalysisJobService service = new AnalysisJobService(runner, new InMemoryJobStore(), Executors.newSingleThreadExecutor());
+        AnalysisJobService service = new AnalysisJobService(runner, new InMemoryJobStore());
         RepoLensServer server = new RepoLensServer(port, service, new ObjectMapper());
         server.start();
         try {
@@ -96,5 +96,63 @@ class RepoLensServerTest {
         } finally {
             server.stop();
         }
+    }
+
+    @Test
+    void rejectsAnalysisWhenRunningAndQueueCapacityAreFull() throws Exception {
+        AnalysisJobLimits limits = new AnalysisJobLimits(1, 1, 2, Duration.ofMinutes(1));
+        InMemoryJobStore store = new InMemoryJobStore(limits);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        AnalysisRunner runner = request -> {
+            started.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(ex);
+            }
+            return new AnalysisRunner.AnalysisRunResult(
+                    RepositoryModel.builder(Repository.local("r1", "demo", request.source())).build(),
+                    List.of(),
+                    tempDir
+            );
+        };
+
+        int port = 18080 + (int) (Math.abs(System.nanoTime()) % 1000);
+        AnalysisJobService service = new AnalysisJobService(runner, store, limits);
+        RepoLensServer server = new RepoLensServer(port, service, new ObjectMapper());
+        server.start();
+        try {
+            HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(2)).build();
+            ObjectMapper mapper = new ObjectMapper();
+            String firstBody = mapper.writeValueAsString(new RepoLensServer.AnalyzeRequest("/tmp/first", false));
+            HttpResponse<String> first = postAnalyze(client, port, firstBody);
+            assertEquals(202, first.statusCode());
+            assertTrue(started.await(5, TimeUnit.SECONDS));
+
+            String secondBody = mapper.writeValueAsString(new RepoLensServer.AnalyzeRequest("/tmp/second", false));
+            assertEquals(202, postAnalyze(client, port, secondBody).statusCode());
+
+            String thirdBody = mapper.writeValueAsString(new RepoLensServer.AnalyzeRequest("/tmp/third", false));
+            HttpResponse<String> rejected = postAnalyze(client, port, thirdBody);
+            assertEquals(429, rejected.statusCode());
+            assertEquals("analysis capacity is full; retry later",
+                    mapper.readTree(rejected.body()).get("error").asText());
+            assertEquals(2, store.size());
+        } finally {
+            release.countDown();
+            server.stop();
+        }
+    }
+
+    private static HttpResponse<String> postAnalyze(HttpClient client, int port, String body) throws Exception {
+        return client.send(
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/v1/analyze"))
+                        .header("Content-Type", "application/json")
+                        .POST(HttpRequest.BodyPublishers.ofString(body))
+                        .build(),
+                HttpResponse.BodyHandlers.ofString()
+        );
     }
 }
