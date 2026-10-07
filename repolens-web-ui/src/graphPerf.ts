@@ -94,8 +94,9 @@ export function attachViewportBusyHandlers(
     timer = setTimeoutFn(end, idleMs);
   };
 
-  // Include programmatic zoom/pan (toolbar) and wheel/gesture paths.
-  const events = "zoom pan dragpan pinchzoom scrollzoom";
+  // Exclude programmatic zoom/pan (toolbar) so animation keeps labels visible,
+  // but include wheel/gesture paths for manual interaction performance.
+  const events = "dragpan pinchzoom scrollzoom";
   cy.on(events, onViewport);
 
   return () => {

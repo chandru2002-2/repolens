@@ -83,7 +83,8 @@ function graphStyles(palette: GraphPalette): StylesheetStyle[] {
         "text-valign": "center",
         "text-halign": "center",
         "text-wrap": "wrap",
-        "text-max-width": 108,
+        "text-max-width": "108px",
+        "text-overflow-wrap": "anywhere",
         "min-zoomed-font-size": 0,
         "background-color": palette.panel,
         "border-width": 1.25,
@@ -518,11 +519,20 @@ function RepositoryGraphComponent({
     if (!cy) {
       return;
     }
-    // Imperative zoom only — fires cy 'zoom' → viewport busy handlers; no React state.
-    cy.zoom({
-      level: cy.zoom() * factor,
-      renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
-    });
+    // Use Cytoscape's native animation for a smooth zoom transition
+    cy.animate(
+      {
+        zoom: {
+          level: cy.zoom() * factor,
+          renderedPosition: { x: cy.width() / 2, y: cy.height() / 2 },
+        },
+      },
+      {
+        duration: 250,
+        easing: "ease-out-quad",
+        queue: false,
+      }
+    );
   }
 
   function fitGraph() {
