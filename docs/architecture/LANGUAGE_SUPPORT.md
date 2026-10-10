@@ -46,6 +46,21 @@ None of the current languages are marked **FULL**. Package-manager manifests are
 | Other Java facts | Activity, state, deployment, and config extractors contribute specialized diagrams when evidence exists |
 | Limitations | No Maven/Gradle dependency graph; no full type-checking; CALLS and JPA associations can miss or under-count real relationships; specialized diagrams may be empty without evidence |
 
+#### Example
+**Input (`src/main/java/com/demo/Service.java`):**
+```java
+package com.demo;
+import com.demo.utils.Helper;
+public class Service extends BaseService {
+    public void execute() {}
+}
+```
+**Extracted Structure:**
+* **Module:** `com.demo`
+* **Imports:** `com.demo.utils.Helper` ➔ `DEPENDS_ON` edge to `com.demo.utils` module.
+* **Symbols:** `class: Service` (EXTENDS `BaseService`), `method: execute`
+* **Not Supported:** Transitive dependencies from `pom.xml` or `build.gradle`, full AST type checking.
+
 ### Go (`go`) — PARTIAL
 
 | Capability | Support |
@@ -56,6 +71,19 @@ None of the current languages are marked **FULL**. Package-manager manifests are
 | Symbols | `struct`→class, `interface`→interface, type aliases→type, `func`→function, methods→method |
 | Dependencies | Resolves when import path matches directory module name (e.g. `"demo/util"` → `demo/util`) |
 | Limitations | No `go.mod` / external module graph; no embedding/implements edges; stdlib imports stay unresolved |
+
+#### Example
+**Input (`api/handler.go`):**
+```go
+package api
+import "demo/auth"
+func HandleRequest() {}
+```
+**Extracted Structure:**
+* **Module:** `api` (from containing directory/package)
+* **Imports:** `demo/auth` ➔ `DEPENDS_ON` edge to `auth` module.
+* **Symbols:** `function: HandleRequest`
+* **Not Supported:** External dependencies like `go.mod` packages, or interface implementation edges.
 
 ### Rust (`rust`) — PARTIAL
 
@@ -68,6 +96,21 @@ None of the current languages are marked **FULL**. Package-manager manifests are
 | Dependencies | Works when `use` first segment matches a file module name (e.g. `use crate::util::…` → `util`) |
 | Limitations | No `Cargo.toml`; limited `mod` nesting; complex `use` trees / re-exports incomplete |
 
+#### Example
+**Input (`src/network/client.rs`):**
+```rust
+use crate::util::config;
+pub struct Client {}
+impl Client {
+    pub fn connect() {}
+}
+```
+**Extracted Structure:**
+* **Module:** `network/client` (from file path)
+* **Imports:** `util` ➔ `DEPENDS_ON` edge to `util` module.
+* **Symbols:** `class: Client` (from struct), `method: connect`
+* **Not Supported:** `Cargo.toml` dependencies, complex `use` tree re-exports.
+
 ### C# (`csharp`) — PARTIAL
 
 | Capability | Support |
@@ -79,6 +122,21 @@ None of the current languages are marked **FULL**. Package-manager manifests are
 | Dependencies | Namespace-style resolution (same heuristics as Java packages) |
 | Limitations | No `.csproj` / NuGet; no inheritance edges; top-level statements lightly covered |
 
+#### Example
+**Input (`Controllers/UserController.cs`):**
+```csharp
+namespace App.Controllers;
+using App.Services;
+public class UserController {
+    public void GetUser() {}
+}
+```
+**Extracted Structure:**
+* **Module:** `App.Controllers` (from namespace)
+* **Imports:** `App.Services` ➔ `DEPENDS_ON` edge to `App.Services` namespace.
+* **Symbols:** `class: UserController`, `method: GetUser`
+* **Not Supported:** NuGet packages from `.csproj`, class inheritance relationships.
+
 ### Kotlin (`kotlin`) — PARTIAL
 
 | Capability | Support |
@@ -89,6 +147,93 @@ None of the current languages are marked **FULL**. Package-manager manifests are
 | Symbols | class/object→class, interface, enum class→enum, top-level `fun`→function, members→method |
 | Dependencies | Package/import resolution like Java |
 | Limitations | No Gradle/Maven manifests; no inheritance edges; limited annotation/DSL coverage |
+
+#### Example
+**Input (`src/main/kotlin/app/Server.kt`):**
+```kotlin
+package app
+import app.routes.UserRoute
+class Server {
+    fun start() {}
+}
+```
+**Extracted Structure:**
+* **Module:** `app`
+* **Imports:** `app.routes.UserRoute` ➔ `DEPENDS_ON` edge to `app.routes` module.
+* **Symbols:** `class: Server`, `method: start`
+* **Not Supported:** External dependencies from `build.gradle.kts`, interface implementation edges.
+
+### JavaScript (`javascript`) — PARTIAL
+
+| Capability | Support |
+|------------|---------|
+| Detection | `.js`, `.mjs`, `.cjs`, `.jsx` |
+| Module identity | File path (one module per file) |
+| Imports | `import` statements, `require()` calls |
+| Symbols | `class`, `function` |
+| Dependencies | Relative imports and requires ➔ `DEPENDS_ON` edges to target files |
+| Limitations | No `package.json` resolution, no type inference |
+
+#### Example
+**Input (`src/utils.js`):**
+```javascript
+import { format } from './formatter.js';
+export function process() {}
+```
+**Extracted Structure:**
+* **Module:** `src/utils`
+* **Imports:** `./formatter.js` ➔ `DEPENDS_ON` edge to `formatter.js` module.
+* **Symbols:** `function: process`
+* **Not Supported:** External `node_modules` graph.
+
+### TypeScript (`typescript`) — PARTIAL
+
+| Capability | Support |
+|------------|---------|
+| Detection | `.ts`, `.tsx` |
+| Module identity | File path (one module per file) |
+| Imports | `import` statements |
+| Symbols | `class`, `interface`, `type`, `function`, `enum` |
+| Dependencies | Relative imports ➔ `DEPENDS_ON` edges |
+| Limitations | No `tsconfig.json` path mapping resolution, no complex type inference |
+
+#### Example
+**Input (`src/api.ts`):**
+```typescript
+import { User } from './models';
+export class ApiClient {
+    fetchUser(): User {}
+}
+```
+**Extracted Structure:**
+* **Module:** `src/api`
+* **Imports:** `./models` ➔ `DEPENDS_ON` edge to `models.ts` module.
+* **Symbols:** `class: ApiClient`
+* **Not Supported:** Path aliases from `tsconfig.json`.
+
+### Python (`python`) — PARTIAL
+
+| Capability | Support |
+|------------|---------|
+| Detection | `.py` |
+| Module identity | File path (one module per file) |
+| Imports | `import` / `from ... import` statements |
+| Symbols | `class`, `def` (functions and methods) |
+| Dependencies | Relative imports ➔ `DEPENDS_ON` edges |
+| Limitations | No `requirements.txt` / `pyproject.toml` support, dynamic imports missed |
+
+#### Example
+**Input (`src/main.py`):**
+```python
+from utils.math import add
+class Calculator:
+    def run(self): pass
+```
+**Extracted Structure:**
+* **Module:** `src/main`
+* **Imports:** `utils.math` ➔ `DEPENDS_ON` edge to `math.py` module.
+* **Symbols:** `class: Calculator`, `method: run`
+* **Not Supported:** `pip` dependencies graph.
 
 ## Shared capture vocabulary
 
