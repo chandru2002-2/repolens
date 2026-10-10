@@ -24,6 +24,16 @@
 
 ---
 
+## Product Demo
+
+Explore the vision and workflow behind RepoLens through this AI-generated concept demo.
+
+> **Note:** This video illustrates the product concept and intended user experience. The generated interface and interactions may differ from the current implementation.
+
+https://github.com/user-attachments/assets/6f455ee7-9fa1-4090-a788-448509e091cc
+
+---
+
 ## See the Codebase, Not Just the Files
 
 Large repositories are difficult to understand.
