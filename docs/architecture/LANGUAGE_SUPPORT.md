@@ -11,6 +11,8 @@ Living document of RepoLens language coverage. Statuses are honest:
 
 Parsing prefers Tree-sitter when natives load (`tree-sitter-seart`); otherwise uses first-class structural fallback (`structural-fallback`). See [ADR-003](../adr/ADR-003-parsing-tree-sitter-language-profiles.md) and [ADR-011](../adr/ADR-011-optional-tree-sitter-first-class-fallback.md).
 
+For one concrete, verified example of the structural information each profile extracts (and what it intentionally does not), see [LANGUAGE_EXAMPLES.md](LANGUAGE_EXAMPLES.md).
+
 Language syntax lives only in `LanguageProfile` implementations under `repolens-parse`. Analyzers, CLI, and Web remain language-independent.
 
 ## Summary matrix
