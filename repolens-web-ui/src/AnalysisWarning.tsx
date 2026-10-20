@@ -1,18 +1,17 @@
-
 import type { AnalysisResponse } from "./api";
 
 type AnalysisWarningsProps = {
   result: AnalysisResponse;
 };
 
-export default function AnalysisWarnings({
-  result,
-}: AnalysisWarningsProps) {
+export default function AnalysisWarnings({ result }: AnalysisWarningsProps) {
   const warnings = result.results.flatMap((analyzer) =>
     analyzer.findings
       .filter(
         (finding) =>
-          finding.severity.toLowerCase() === "warning",
+          finding.severity.toLowerCase() === "warning" &&
+          analyzer.analyzerId !== "ingest" &&
+          analyzer.analyzerId !== "metadata",
       )
       .map((finding) => ({
         id: finding.id,
