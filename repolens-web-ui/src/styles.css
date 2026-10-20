@@ -537,7 +537,10 @@ input {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(240px, 300px);
+  grid-template-columns: minmax(200px, 250px) minmax(0, 1fr) minmax(
+      240px,
+      300px
+    );
   grid-template-rows: minmax(0, 1fr);
   grid-template-areas: "explorer graph inspector";
   overflow: hidden;
@@ -776,6 +779,31 @@ input {
   font-size: 0.68rem;
   line-height: 1.35;
   letter-spacing: 0.02em;
+}
+.analysis-warnings {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--line-strong);
+  border-left: 3px solid var(--accent);
+  background: var(--select);
+  color: var(--ink-2);
+}
+
+.analysis-warnings h2 {
+  margin: 0 0 0.4rem;
+  font-size: 0.8rem;
+}
+
+.analysis-warnings ul {
+  margin: 0;
+  padding-left: 1.2rem;
+}
+
+.analysis-warnings li {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
 }
 
 .panel-hint {

@@ -325,6 +325,7 @@ describe("analysis screen on every submission", () => {
   });
 });
 
+
 describe("analysis screen", () => {
   it("shows the long-running notice without a percentage", () => {
     render(
@@ -334,13 +335,48 @@ describe("analysis screen", () => {
         facts={[{ label: "URL", value: URL_A }]}
       />,
     );
+
     expect(screen.getByText("Analysis is taking longer than usual.")).toBeTruthy();
     expect(
       screen.getByText(
         "RepoLens is still processing the repository. Larger repositories may require more time.",
       ),
     ).toBeTruthy();
+
     expect(screen.getByRole("progressbar").getAttribute("aria-valuenow")).toBeNull();
     expect(screen.queryByText(/%/)).toBeNull();
+  });
+
+  it("displays analysis warnings in the workspace", async () => {
+    const result = analysis("Hello-World", URL_A);
+
+    result.results = [
+      {
+        analyzerId: "test-analyzer",
+        summary: "Analysis completed with warnings",
+        metrics: [],
+        findings: [
+          {
+            id: "warning-1",
+            severity: "warning",
+            message: "Some files were skipped during analysis",
+            subjectId: null,
+          },
+        ],
+      },
+    ];
+
+    waitForResult.mockResolvedValueOnce(result);
+
+    render(<App />);
+    typeSource(URL_A);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Analyze", exact: true }),
+    );
+
+    expect(
+      await screen.findByText("Some files were skipped during analysis"),
+    ).toBeTruthy();
   });
 });

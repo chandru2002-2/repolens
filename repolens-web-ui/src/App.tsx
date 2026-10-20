@@ -1,3 +1,4 @@
+import AnalysisWarnings from "./AnalysisWarning";
 import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { formatRelativeTime } from "./format";
@@ -855,6 +856,7 @@ export default function App() {
             />
 
             <section className="graph-stage">
+              <AnalysisWarnings result={result} />
               <div className="view-tabs" role="tablist" aria-label="Diagram views">
                 {DIAGRAM_TABS.filter((tab) => tab.group === "core").map((tab) => (
                   <button
