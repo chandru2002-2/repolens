@@ -1,11 +1,7 @@
 import { useState } from "react";
 import type { GraphEdge, GraphNode, RepositoryMetadata } from "./api";
 import { buildMetadataRows } from "./format";
-import {
-  buildExplorerTree,
-  kindMeta,
-  type ExplorerItem,
-} from "./graphModel";
+import { buildExplorerTree, kindMeta, type ExplorerItem } from "./graphModel";
 import { PanelCollapseToggle } from "./PanelCollapseToggle";
 
 type Props = {
@@ -15,9 +11,8 @@ type Props = {
   onSelectNode: (id: string) => void;
   repoName: string;
   repoSource: string;
-  skipWarning?: string | null;
+  analysisWarnings?: string[];
   metadata?: RepositoryMetadata | null;
-  metadataWarning?: string | null;
   collapsed: boolean;
   onToggleCollapsed: () => void;
 };
@@ -55,7 +50,11 @@ function TreeNode({
         ) : (
           <span className="tree-twist spacer" />
         )}
-        <button type="button" className="tree-label" onClick={() => onSelectNode(item.id)}>
+        <button
+          type="button"
+          className="tree-label"
+          onClick={() => onSelectNode(item.id)}
+        >
           <span className="tree-icon" aria-hidden="true">
             {meta.icon}
           </span>
@@ -87,9 +86,8 @@ export function ExplorerPanel({
   onSelectNode,
   repoName,
   repoSource,
-  skipWarning = null,
+  analysisWarnings = [],
   metadata = null,
-  metadataWarning = null,
   collapsed,
   onToggleCollapsed,
 }: Props) {
@@ -98,7 +96,9 @@ export function ExplorerPanel({
 
   return (
     <aside
-      className={collapsed ? "panel explorer-panel collapsed" : "panel explorer-panel"}
+      className={
+        collapsed ? "panel explorer-panel collapsed" : "panel explorer-panel"
+      }
       aria-label="Repository"
       data-tutorial="repository"
     >
@@ -121,16 +121,15 @@ export function ExplorerPanel({
       >
         <p className="panel-source">{repoName}</p>
         <p className="panel-source">{repoSource}</p>
-        {skipWarning ? (
-          <p className="panel-warning" role="status">
-            ⚠ {compactSkipWarning(skipWarning)}
+        {analysisWarnings.map((warning, index) => (
+          <p
+            className="panel-warning"
+            role="status"
+            key={`${index}-${warning}`}
+          >
+            ⚠ {warning}
           </p>
-        ) : null}
-        {metadataWarning ? (
-          <p className="panel-warning" role="status">
-            ⚠ {metadataWarning}
-          </p>
-        ) : null}
+        ))}
 
         {rows.length > 0 ? (
           <div className="panel-section meta-section">
@@ -161,11 +160,17 @@ export function ExplorerPanel({
           id="repository-tree"
           data-tutorial="tree"
           className="panel-section tree-section"
-          style={{ borderTop: "1px solid var(--line)", marginTop: "0.55rem", paddingTop: "0.45rem" }}
+          style={{
+            borderTop: "1px solid var(--line)",
+            marginTop: "0.55rem",
+            paddingTop: "0.45rem",
+          }}
         >
           <h3>Tree</h3>
           {tree.length === 0 ? (
-            <p className="panel-hint">No hierarchical CONTAINS edges in graph.</p>
+            <p className="panel-hint">
+              No hierarchical CONTAINS edges in graph.
+            </p>
           ) : (
             <ul className="tree-root">
               {tree.map((item) => (
@@ -183,14 +188,4 @@ export function ExplorerPanel({
       </div>
     </aside>
   );
-}
-
-function compactSkipWarning(message: string): string {
-  const match = message.match(/Skipped (\d+) files? exceeding the ([^.]+)\./i);
-  if (match) {
-    const count = match[1];
-    const limit = match[2].replace(/\s+file-size limit$/i, "").trim();
-    return `${count} file${count === "1" ? "" : "s"} skipped · exceeds ${limit} limit`;
-  }
-  return message;
 }
