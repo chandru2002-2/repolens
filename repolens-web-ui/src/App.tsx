@@ -989,6 +989,7 @@ export default function App() {
               onSelectNode={selectNode}
               repoName={result.repository.name}
               repoSource={result.repository.source}
+              metadata={result.metadata}
               analysisWarnings={result.results.flatMap((analyzer) =>
                 analyzer.findings
                   .filter(

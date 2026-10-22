@@ -527,6 +527,17 @@ describe("analysis screen", () => {
 
   it("displays all analysis warnings only in the repository sidebar", async () => {
     const result = analysis("Hello-World", URL_A);
+    result.metadata = {
+      name: "Hello-World",
+      owner: "test-owner",
+      defaultBranch: "main",
+      commitCount: 10,
+      lastCommit: {
+        sha: "abc123",
+        message: "Test commit",
+        author: "Test Author",
+      },
+    };
 
     result.results = [
       {
@@ -575,6 +586,12 @@ describe("analysis screen", () => {
 
     expect(firstWarning.closest(".panel-warning")).toBeTruthy();
     expect(secondWarning.closest(".panel-warning")).toBeTruthy();
+    expect(
+      screen.getByRole("heading", { name: "Repository information" }),
+    ).toBeTruthy();
+
+    expect(screen.getByText("test-owner")).toBeTruthy();
+    expect(screen.getByText("main")).toBeTruthy();
 
     expect(
       screen.getAllByText(/Some files were skipped during analysis/),
