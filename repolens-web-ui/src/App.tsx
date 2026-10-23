@@ -1,7 +1,20 @@
-import { FormEvent, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import AnalysisWarnings from "./AnalysisWarning";
+import {
+  FormEvent,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import type { CSSProperties } from "react";
 import { formatRelativeTime } from "./format";
-import { readRecent, rememberRepository, writeRecent, type RecentRepository } from "./recentRepositories";
+import {
+  readRecent,
+  rememberRepository,
+  writeRecent,
+  type RecentRepository,
+} from "./recentRepositories";
 import { githubBlobUrl } from "./sourceLink";
 import {
   TUTORIAL_STEPS,
@@ -70,7 +83,11 @@ const AUTHOR_URL = "https://github.com/chandru2002-2";
 function Brand({ onClick }: { onClick?: () => void }) {
   if (onClick) {
     return (
-      <button type="button" className="brand-mark brand-button" onClick={onClick}>
+      <button
+        type="button"
+        className="brand-mark brand-button"
+        onClick={onClick}
+      >
         REPO<span className="slash">//</span>LENS
       </button>
     );
@@ -152,7 +169,11 @@ function AnalyzeForm({
   error: string | null;
 }) {
   return (
-    <form className="analyze-form" aria-label="Analyze a repository" onSubmit={onSubmit}>
+    <form
+      className="analyze-form"
+      aria-label="Analyze a repository"
+      onSubmit={onSubmit}
+    >
       <label className="field-label" htmlFor="source">
         GitHub repository URL
       </label>
@@ -198,9 +219,18 @@ function RecentMenu({
       <ul>
         {entries.map((entry) => (
           <li key={entry.url}>
-            <button type="button" className="recent-fill" onClick={() => onFill(entry.url)}>
-              <span>{entry.owner ? `${entry.owner}/${entry.name}` : entry.name}</span>
-              <span className="recent-when">{formatRelativeTime(entry.lastAnalyzedAt) ?? entry.lastAnalyzedAt}</span>
+            <button
+              type="button"
+              className="recent-fill"
+              onClick={() => onFill(entry.url)}
+            >
+              <span>
+                {entry.owner ? `${entry.owner}/${entry.name}` : entry.name}
+              </span>
+              <span className="recent-when">
+                {formatRelativeTime(entry.lastAnalyzedAt) ??
+                  entry.lastAnalyzedAt}
+              </span>
             </button>
             <button
               type="button"
@@ -239,13 +269,23 @@ function TutorialCard({
     return null;
   }
   return (
-    <div className="tutorial-card" role="dialog" aria-labelledby="tutorial-title">
+    <div
+      className="tutorial-card"
+      role="dialog"
+      aria-labelledby="tutorial-title"
+    >
       <h2 id="tutorial-title">{step.title}</h2>
       <p>{step.body}</p>
-      <p className="tutorial-progress">{stepIndex + 1} / {TUTORIAL_STEPS.length}</p>
+      <p className="tutorial-progress">
+        {stepIndex + 1} / {TUTORIAL_STEPS.length}
+      </p>
       <div className="analyze-actions">
-        <button type="button" className="ghost-button" onClick={onSkip}>Skip tutorial</button>
-        <button type="button" onClick={onNext}>{stepIndex === TUTORIAL_STEPS.length - 1 ? "Done" : "Next"}</button>
+        <button type="button" className="ghost-button" onClick={onSkip}>
+          Skip tutorial
+        </button>
+        <button type="button" onClick={onNext}>
+          {stepIndex === TUTORIAL_STEPS.length - 1 ? "Done" : "Next"}
+        </button>
       </div>
     </div>
   );
@@ -273,9 +313,13 @@ export function AnalysisScreen({
       {status ? <p className="analysis-kicker">Status: {status}</p> : null}
       <h1 className="analysis-title">{copy.title}</h1>
       <p className="analysis-detail">{copy.detail}</p>
-      {progress?.repositoryName ? <p className="analysis-repo">{progress.repositoryName}</p> : null}
+      {progress?.repositoryName ? (
+        <p className="analysis-repo">{progress.repositoryName}</p>
+      ) : null}
       {percent == null ? (
-        <p className="analysis-unavailable">Detailed progress is unavailable while this analysis is running.</p>
+        <p className="analysis-unavailable">
+          Detailed progress is unavailable while this analysis is running.
+        </p>
       ) : (
         <p className="analysis-percent">{percent}%</p>
       )}
@@ -286,18 +330,34 @@ export function AnalysisScreen({
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={percent ?? undefined}
-        aria-valuetext={percent == null ? "Detailed progress unavailable" : `${percent}%`}
+        aria-valuetext={
+          percent == null ? "Detailed progress unavailable" : `${percent}%`
+        }
       >
         <span
-          className={percent == null ? "analysis-progress-bar" : "analysis-progress-bar determinate"}
-          style={percent == null ? undefined : { width: `${percent}%`, transform: "none" }}
+          className={
+            percent == null
+              ? "analysis-progress-bar"
+              : "analysis-progress-bar determinate"
+          }
+          style={
+            percent == null
+              ? undefined
+              : { width: `${percent}%`, transform: "none" }
+          }
         />
       </div>
       {progress?.detailAvailable && progress.stages.length > 0 ? (
         <ol className="analysis-stages">
           {progress.stages.map((stage) => (
             <li key={stage.id} className={`analysis-stage ${stage.state}`}>
-              <span aria-hidden="true">{stage.state === "complete" ? "✓" : stage.state === "active" ? "●" : "○"}</span>
+              <span aria-hidden="true">
+                {stage.state === "complete"
+                  ? "✓"
+                  : stage.state === "active"
+                    ? "●"
+                    : "○"}
+              </span>
               {stage.label}
             </li>
           ))}
@@ -344,7 +404,11 @@ function AnalysisError({
         <span className="analysis-reason">{reason}</span>
       </p>
       <div className="analyze-actions analysis-error-actions">
-        <button type="button" className="ghost-button" onClick={onChangeRepository}>
+        <button
+          type="button"
+          className="ghost-button"
+          onClick={onChangeRepository}
+        >
           Change repository
         </button>
         <button type="button" onClick={onRetry}>
@@ -364,8 +428,12 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [runId, setRunId] = useState(0);
-  const [recent, setRecent] = useState<RecentRepository[]>(() => readRecent(browserStorage()));
-  const [tutorial, setTutorial] = useState<TutorialRecord>(() => readTutorial(browserStorage()));
+  const [recent, setRecent] = useState<RecentRepository[]>(() =>
+    readRecent(browserStorage()),
+  );
+  const [tutorial, setTutorial] = useState<TutorialRecord>(() =>
+    readTutorial(browserStorage()),
+  );
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [tutorialStep, setTutorialStep] = useState(0);
   const [sourceNotice, setSourceNotice] = useState<string | null>(null);
@@ -376,7 +444,9 @@ export default function App() {
   const [focusId, setFocusId] = useState<string | null>(null);
   const [view, setView] = useState<GraphViewMode>("architecture");
   const [intelTab, setIntelTab] = useState<IntelligenceTab | null>(null);
-  const [filters, setFilters] = useState<GraphFilterState>(DEFAULT_GRAPH_FILTERS);
+  const [filters, setFilters] = useState<GraphFilterState>(
+    DEFAULT_GRAPH_FILTERS,
+  );
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [inspectorCollapsed, setInspectorCollapsed] = useState(false);
@@ -552,23 +622,36 @@ export default function App() {
     void trackAnalysis(generation, controller, validation.source);
   }
 
-  async function trackAnalysis(generation: number, controller: AbortController, trimmed: string) {
+  async function trackAnalysis(
+    generation: number,
+    controller: AbortController,
+    trimmed: string,
+  ) {
     try {
       const job = await startAnalysis(trimmed, controller.signal);
-      if (!isCurrentAnalysis(generationRef.current, generation) || controller.signal.aborted) {
+      if (
+        !isCurrentAnalysis(generationRef.current, generation) ||
+        controller.signal.aborted
+      ) {
         return;
       }
       setStatus(job);
       const analysis = await waitForResult(
         job.id,
         (next) => {
-          if (isCurrentAnalysis(generationRef.current, generation) && !controller.signal.aborted) {
+          if (
+            isCurrentAnalysis(generationRef.current, generation) &&
+            !controller.signal.aborted
+          ) {
             setStatus(next);
           }
         },
         controller.signal,
       );
-      if (!isCurrentAnalysis(generationRef.current, generation) || controller.signal.aborted) {
+      if (
+        !isCurrentAnalysis(generationRef.current, generation) ||
+        controller.signal.aborted
+      ) {
         return;
       }
       setResult(analysis);
@@ -589,7 +672,13 @@ export default function App() {
         return;
       }
       setPhase("error");
-      setError(err instanceof AnalysisFailedError ? err.reason : err instanceof Error ? err.message : null);
+      setError(
+        err instanceof AnalysisFailedError
+          ? err.reason
+          : err instanceof Error
+            ? err.message
+            : null,
+      );
     }
   }
 
@@ -605,13 +694,21 @@ export default function App() {
 
   function skipTutorial() {
     setTutorialOpen(false);
-    persistTutorial({ version: TUTORIAL_VERSION, completed: false, skipped: true });
+    persistTutorial({
+      version: TUTORIAL_VERSION,
+      completed: false,
+      skipped: true,
+    });
   }
 
   function advanceTutorial() {
     if (tutorialStep >= TUTORIAL_STEPS.length - 1) {
       setTutorialOpen(false);
-      persistTutorial({ version: TUTORIAL_VERSION, completed: true, skipped: false });
+      persistTutorial({
+        version: TUTORIAL_VERSION,
+        completed: true,
+        skipped: false,
+      });
       return;
     }
     setTutorialStep((step) => step + 1);
@@ -620,7 +717,11 @@ export default function App() {
   function replayTutorial() {
     setTutorialStep(0);
     setTutorialOpen(true);
-    persistTutorial({ version: TUTORIAL_VERSION, completed: false, skipped: false });
+    persistTutorial({
+      version: TUTORIAL_VERSION,
+      completed: false,
+      skipped: false,
+    });
   }
 
   function openSource(nodeId: string) {
@@ -628,8 +729,13 @@ export default function App() {
       return;
     }
     const node = result.graph.nodes.find((item) => item.id === nodeId);
-    const symbol = result.symbols?.find((item) => item.id === node?.sourceEntityId);
-    const revision = result.metadata?.lastCommit?.sha || result.metadata?.defaultBranch || null;
+    const symbol = result.symbols?.find(
+      (item) => item.id === node?.sourceEntityId,
+    );
+    const revision =
+      result.metadata?.lastCommit?.sha ||
+      result.metadata?.defaultBranch ||
+      null;
     const url = githubBlobUrl({
       source: result.repository.source,
       revision,
@@ -644,7 +750,11 @@ export default function App() {
     window.open(url, "_blank", "noopener,noreferrer");
     if (tutorialOpen && TUTORIAL_STEPS[tutorialStep]?.id === "github") {
       setTutorialOpen(false);
-      persistTutorial({ version: TUTORIAL_VERSION, completed: true, skipped: false });
+      persistTutorial({
+        version: TUTORIAL_VERSION,
+        completed: true,
+        skipped: false,
+      });
     }
   }
 
@@ -687,7 +797,10 @@ export default function App() {
 
   const surface = analysisSurface(phase, result != null);
   const loadingFacts = analysisFacts({
-    source: status?.progress?.sourceUrl ?? status?.source ?? (phase === "running" ? source : null),
+    source:
+      status?.progress?.sourceUrl ??
+      status?.source ??
+      (phase === "running" ? source : null),
     repositoryName: status?.progress?.repositoryName,
     fileCount: status?.progress?.fileCount,
     moduleCount: null,
@@ -695,7 +808,8 @@ export default function App() {
     importCount: null,
     sizeBytes: null,
   });
-  const activeDiagram = result?.diagrams?.find((diagram) => diagram.type === view) ?? null;
+  const activeDiagram =
+    result?.diagrams?.find((diagram) => diagram.type === view) ?? null;
   const graphNodes = isCoreDiagram(view)
     ? (result?.graph.nodes ?? [])
     : (activeDiagram?.graph.nodes ?? []);
@@ -704,7 +818,8 @@ export default function App() {
     : (activeDiagram?.graph.edges ?? []);
   const diagramEmptyMessage =
     !isCoreDiagram(view) && graphNodes.length === 0
-      ? activeDiagram?.emptyMessage || "No diagram data available for this view."
+      ? activeDiagram?.emptyMessage ||
+        "No diagram data available for this view."
       : null;
   const diagramAdvisory =
     !isCoreDiagram(view) && graphNodes.length > 0
@@ -716,7 +831,7 @@ export default function App() {
 
   const statusLabel =
     phase === "running"
-      ? status?.status ?? "RUNNING"
+      ? (status?.status ?? "RUNNING")
       : phase === "error"
         ? "ERROR"
         : surface === "workspace"
@@ -728,7 +843,10 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-left">
           <Brand onClick={phase !== "landing" ? goHome : undefined} />
-          <ThemeToggle preference={themePreference} onChange={setThemePreference} />
+          <ThemeToggle
+            preference={themePreference}
+            onChange={setThemePreference}
+          />
         </div>
 
         {surface === "workspace" || showNewLensControl(phase) ? (
@@ -756,7 +874,11 @@ export default function App() {
                   autoComplete="off"
                 />
                 {searchOpen && hits.length > 0 ? (
-                  <ul className="search-results" role="listbox" style={searchMenuStyle}>
+                  <ul
+                    className="search-results"
+                    role="listbox"
+                    style={searchMenuStyle}
+                  >
                     {hits.map((hit) => (
                       <li key={hit.id}>
                         <button
@@ -764,7 +886,9 @@ export default function App() {
                           onMouseDown={(event) => event.preventDefault()}
                           onClick={() => applySearchHit(hit.id)}
                         >
-                          <span className="search-kind">{kindMeta(hit.kind).short}</span>
+                          <span className="search-kind">
+                            {kindMeta(hit.kind).short}
+                          </span>
                           <span>{hit.label}</span>
                         </button>
                       </li>
@@ -774,12 +898,20 @@ export default function App() {
               </div>
             ) : null}
             {surface === "workspace" && !shouldShowTutorial(tutorial) ? (
-              <button className="tool-button" type="button" onClick={replayTutorial}>
+              <button
+                className="tool-button"
+                type="button"
+                onClick={replayTutorial}
+              >
                 Replay tutorial
               </button>
             ) : null}
             {showNewLensControl(phase) ? (
-              <button className="tool-button" type="button" onClick={openNewLens}>
+              <button
+                className="tool-button"
+                type="button"
+                onClick={openNewLens}
+              >
                 New
               </button>
             ) : null}
@@ -805,11 +937,15 @@ export default function App() {
         <main className={entry === "landing" ? "landing" : "compose"}>
           <h1 className="landing-title">Analyze a repository</h1>
           {entry === "landing" ? (
-            <section className="landing-intro" aria-labelledby="landing-intro-title">
+            <section
+              className="landing-intro"
+              aria-labelledby="landing-intro-title"
+            >
               <h2 id="landing-intro-title">Understand unfamiliar codebases</h2>
               <p>
-                RepoLens analyzes GitHub repositories to map software architecture, dependencies, REST APIs,
-                database entities, classes, and code relationships in interactive diagrams.
+                RepoLens analyzes GitHub repositories to map software
+                architecture, dependencies, REST APIs, database entities,
+                classes, and code relationships in interactive diagrams.
               </p>
             </section>
           ) : null}
@@ -838,8 +974,14 @@ export default function App() {
         </main>
       ) : surface === "workspace" && result ? (
         <div className="workspace" data-screen="workspace">
-          {sourceNotice ? <p className="error workspace-notice" role="status">{sourceNotice}</p> : null}
-          <main className={explorerGridClass(explorerCollapsed, inspectorCollapsed)}>
+          {sourceNotice ? (
+            <p className="error workspace-notice" role="status">
+              {sourceNotice}
+            </p>
+          ) : null}
+          <main
+            className={explorerGridClass(explorerCollapsed, inspectorCollapsed)}
+          >
             <ExplorerPanel
               nodes={result.graph.nodes}
               edges={result.graph.edges}
@@ -847,34 +989,51 @@ export default function App() {
               onSelectNode={selectNode}
               repoName={result.repository.name}
               repoSource={result.repository.source}
-              skipWarning={oversizedSkipWarning(result)}
               metadata={result.metadata}
-              metadataWarning={metadataWarning(result)}
+              analysisWarnings={result.results.flatMap((analyzer) =>
+                analyzer.findings
+                  .filter(
+                    (finding) => finding.severity.toLowerCase() === "warning",
+                  )
+                  .map((finding) => finding.message),
+              )}
               collapsed={explorerCollapsed}
               onToggleCollapsed={() => setExplorerCollapsed((value) => !value)}
             />
 
             <section className="graph-stage">
-              <div className="view-tabs" role="tablist" aria-label="Diagram views">
-                {DIAGRAM_TABS.filter((tab) => tab.group === "core").map((tab) => (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    role="tab"
-                    aria-selected={intelTab === null && view === tab.id}
-                    className={intelTab === null && view === tab.id ? "view-tab active" : "view-tab"}
-                    onClick={() => showDiagram(tab.id)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div
+                className="view-tabs"
+                role="tablist"
+                aria-label="Diagram views"
+              >
+                {DIAGRAM_TABS.filter((tab) => tab.group === "core").map(
+                  (tab) => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      role="tab"
+                      aria-selected={intelTab === null && view === tab.id}
+                      className={
+                        intelTab === null && view === tab.id
+                          ? "view-tab active"
+                          : "view-tab"
+                      }
+                      onClick={() => showDiagram(tab.id)}
+                    >
+                      {tab.label}
+                    </button>
+                  ),
+                )}
                 {INTELLIGENCE_TABS.map((tab) => (
                   <button
                     key={tab.id}
                     type="button"
                     role="tab"
                     aria-selected={intelTab === tab.id}
-                    className={intelTab === tab.id ? "view-tab active" : "view-tab"}
+                    className={
+                      intelTab === tab.id ? "view-tab active" : "view-tab"
+                    }
                     onClick={() => {
                       setIntelTab(tab.id);
                       setFocusId(null);
@@ -887,7 +1046,9 @@ export default function App() {
                   <span className="sr-only">More diagrams</span>
                   <select
                     className="view-select"
-                    value={intelTab === null && !isCoreDiagram(view) ? view : ""}
+                    value={
+                      intelTab === null && !isCoreDiagram(view) ? view : ""
+                    }
                     aria-label="Additional diagrams"
                     onChange={(event) => {
                       const next = event.target.value as GraphViewMode;
@@ -898,19 +1059,29 @@ export default function App() {
                     }}
                   >
                     <option value="">More diagrams…</option>
-                    {DIAGRAM_TABS.filter((tab) => tab.group === "advanced").map((tab) => (
-                      <option key={tab.id} value={tab.id}>
-                        {tab.label}
-                      </option>
-                    ))}
+                    {DIAGRAM_TABS.filter((tab) => tab.group === "advanced").map(
+                      (tab) => (
+                        <option key={tab.id} value={tab.id}>
+                          {tab.label}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </label>
               </div>
               {intelTab ? (
-                <IntelligencePanel result={result} tab={intelTab} onSelectEntity={selectEntity} />
+                <IntelligencePanel
+                  result={result}
+                  tab={intelTab}
+                  onSelectEntity={selectEntity}
+                />
               ) : (
                 <>
-                  <GraphFilters view={view} filters={filters} onChange={setFilters} />
+                  <GraphFilters
+                    view={view}
+                    filters={filters}
+                    onChange={setFilters}
+                  />
                   {diagramEmptyMessage ? (
                     <p className="diagram-empty" role="status">
                       {diagramEmptyMessage}
@@ -946,7 +1117,11 @@ export default function App() {
               selection={selection}
               onSelectNode={selectNode}
               onChangeView={setView}
-              focused={focusId !== null && selection?.type === "node" && focusId === selection.id}
+              focused={
+                focusId !== null &&
+                selection?.type === "node" &&
+                focusId === selection.id
+              }
               onFocus={() => {
                 if (selection?.type === "node") {
                   setFocusId(selection.id);
@@ -986,7 +1161,9 @@ export default function App() {
             <span>
               Theme:{" "}
               <strong>
-                {themePreference === "auto" ? `auto/${resolvedTheme}` : resolvedTheme}
+                {themePreference === "auto"
+                  ? `auto/${resolvedTheme}`
+                  : resolvedTheme}
               </strong>
             </span>
           </div>
@@ -994,7 +1171,11 @@ export default function App() {
       ) : null}
 
       {surface === "workspace" && tutorialOpen ? (
-        <TutorialCard stepIndex={tutorialStep} onNext={advanceTutorial} onSkip={skipTutorial} />
+        <TutorialCard
+          stepIndex={tutorialStep}
+          onNext={advanceTutorial}
+          onSkip={skipTutorial}
+        />
       ) : null}
 
       <SiteFooter />
