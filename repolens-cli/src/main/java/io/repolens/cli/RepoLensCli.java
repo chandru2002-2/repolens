@@ -27,8 +27,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Thin CLI adapter over RepoLens Core / Web.
@@ -37,6 +40,9 @@ import java.util.logging.Logger;
 public final class RepoLensCli {
 
     private static final ObjectMapper JSON = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
+
+    /** Analyzer ids whose findings describe ingestion (see DefaultAnalysisRunner and the metadata collector). */
+    private static final Set<String> INGESTION_ANALYZER_IDS = Set.of("ingest", "metadata");
 
     private RepoLensCli() {
     }
@@ -252,6 +258,8 @@ public final class RepoLensCli {
             report.append("Tests     : ").append(dto.tests().size()).append('\n');
             report.append("Traces    : ").append(dto.traces().size()).append(" static paths\n");
 
+            appendSummary(report, model, analyses, dto);
+
             writeOutput(report.toString(), output);
         } catch (Exception ex) {
             if (ex instanceof CliException cli) {
@@ -259,6 +267,77 @@ public final class RepoLensCli {
             }
             throw new CliException("Analyze failed: " + ex.getMessage(), 1);
         }
+    }
+
+    /**
+     * Appends a concise, human-readable summary of an analysis run. Presentation only: it reads
+     * facts already present in the {@link RepositoryModel} and analyzer results, and is never
+     * emitted for {@code --json} output.
+     */
+    private static void appendSummary(
+            StringBuilder report,
+            RepositoryModel model,
+            List<AnalysisResult> analyses,
+            AnalysisResponseDto dto
+    ) {
+        // SourceFile.language is a language-profile id for parsed sources and the lowercase file
+        // extension (or "unknown") for everything else, so this is a file-type breakdown.
+        Map<String, Long> filesByType = model.files().stream()
+                .collect(Collectors.groupingBy(
+                        file -> file.languageOrEmpty().orElse("unknown"),
+                        Collectors.counting()));
+        String fileTypes = filesByType.entrySet().stream()
+                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()
+                        .thenComparing(Map.Entry.comparingByKey()))
+                .map(entry -> entry.getKey() + " (" + entry.getValue() + ")")
+                .collect(Collectors.joining(", "));
+
+        long typeCount = model.symbols().stream()
+                .filter(symbol -> symbol.kind() == SymbolKind.CLASS
+                        || symbol.kind() == SymbolKind.INTERFACE
+                        || symbol.kind() == SymbolKind.ENUM
+                        || symbol.kind() == SymbolKind.TYPE)
+                .count();
+
+        report.append("\n-- Summary --\n");
+        appendSummaryLine(report, "Repository", model.repository().name());
+        appendSummaryLine(report, "File types", fileTypes.isEmpty() ? "none detected" : fileTypes);
+        // fileCount() covers every inventoried file (source or not); ignored, binary and oversized
+        // files are already excluded during ingestion.
+        appendSummaryLine(report, "Files", model.fileCount() + " inventoried");
+        // A module is a package, directory or file path depending on the language profile.
+        appendSummaryLine(report, "Modules", model.modules().size() + " (package, directory or file, by language)");
+        appendSummaryLine(report, "Types", typeCount + " (class, interface, enum, type)");
+        appendSummaryLine(report, "Endpoints", dto.endpoints().size());
+        appendIngestionWarnings(report, analyses);
+    }
+
+    /** Label column is padded to the width of "Ingestion warnings" so the block lines up. */
+    private static void appendSummaryLine(StringBuilder report, String label, Object value) {
+        report.append(String.format("%-18s: %s\n", label, value));
+    }
+
+    /**
+     * Appends warnings raised while ingesting the repository (e.g. skipped oversized files).
+     * Analysis findings from other analyzers stay in the {@code -- Analyzers --} section, matching
+     * how the Web UI separates ingest/metadata warnings from analysis warnings. Messages are
+     * de-duplicated in first-seen order.
+     */
+    static void appendIngestionWarnings(StringBuilder report, List<AnalysisResult> analyses) {
+        List<String> warnings = analyses.stream()
+                .filter(analysis -> INGESTION_ANALYZER_IDS.contains(analysis.analyzerId()))
+                .flatMap(analysis -> analysis.findings().stream())
+                .filter(finding -> "warning".equalsIgnoreCase(finding.severity()))
+                .map(AnalysisResult.Finding::message)
+                .distinct()
+                .toList();
+
+        if (warnings.isEmpty()) {
+            report.append("Ingestion warnings: none\n");
+            return;
+        }
+        report.append("Ingestion warnings: ").append(warnings.size()).append('\n');
+        warnings.forEach(message -> report.append("  - ").append(message).append('\n'));
     }
 
     private static void runEndpoints(String path, boolean json, Path output) throws Exception {
